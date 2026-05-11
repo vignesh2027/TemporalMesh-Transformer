@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TemporalMesh Transformer</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --accent3: #d2a8ff;
+      --accent4: #ffa657;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --code-bg: #1f2937;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px;
+    }
+    .nav-logo { font-weight: 700; font-size: 1rem; color: var(--accent); letter-spacing: -0.5px; }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.875rem; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 6rem 2rem 4rem;
+      max-width: 860px; margin: 0 auto;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(88,166,255,0.12);
+      border: 1px solid rgba(88,166,255,0.3);
+      color: var(--accent);
+      font-size: 0.75rem; font-weight: 600;
+      padding: 0.25rem 0.75rem; border-radius: 999px;
+      margin-bottom: 1.5rem; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800; letter-spacing: -1.5px;
+      background: linear-gradient(135deg, #e6edf3 0%, #58a6ff 60%, #d2a8ff 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 1.25rem;
+    }
+    .hero-sub {
+      font-size: 1.15rem; color: var(--muted);
+      max-width: 620px; margin: 0 auto 2.5rem;
+    }
+    .hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.65rem 1.4rem; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 600; text-decoration: none;
+      transition: all .2s; cursor: pointer;
+    }
+    .btn-primary { background: var(--accent); color: #0d1117; }
+    .btn-primary:hover { background: #79c0ff; }
+    .btn-ghost {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* DIFFERENCE BANNER */
+    .diff-banner {
+      background: linear-gradient(135deg, rgba(88,166,255,0.08), rgba(210,168,255,0.08));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      max-width: 900px; margin: 0 auto 4rem;
+      text-align: center;
+    }
+    .diff-banner h2 { font-size: 1.4rem; margin-bottom: 1rem; color: var(--text); }
+    .diff-banner p { color: var(--muted); max-width: 680px; margin: 0 auto; font-size: 0.95rem; }
+
+    /* SECTIONS */
+    section { max-width: 960px; margin: 0 auto; padding: 4rem 2rem; }
+    .section-label {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem;
+    }
+    h2.section-title {
+      font-size: clamp(1.5rem, 3vw, 2.25rem);
+      font-weight: 800; letter-spacing: -0.5px; margin-bottom: 1rem;
+    }
+    .section-desc { color: var(--muted); max-width: 600px; margin-bottom: 3rem; }
+
+    /* INNOVATIONS GRID */
+    .innovations { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+    .inn-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.75rem;
+      transition: border-color .2s, transform .2s;
+    }
+    .inn-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+    .inn-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 1rem;
+    }
+    .inn-icon.blue { background: rgba(88,166,255,0.15); }
+    .inn-icon.green { background: rgba(63,185,80,0.15); }
+    .inn-icon.purple { background: rgba(210,168,255,0.15); }
+    .inn-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .inn-card p { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+
+    /* COMPARISON TABLE */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th {
+      background: var(--surface); color: var(--muted);
+      font-weight: 600; text-align: left;
+      padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+      font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .highlight-row td { background: rgba(88,166,255,0.06); }
+    .tag {
+      display: inline-block; padding: 0.15rem 0.5rem;
+      border-radius: 4px; font-size: 0.75rem; font-weight: 600;
+    }
+    .tag-yes { background: rgba(63,185,80,0.15); color: var(--accent2); }
+    .tag-no { background: rgba(139,148,158,0.1); color: var(--muted); }
+
+    /* ARCHITECTURE */
+    .arch-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 2rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.8rem; line-height: 1.8;
+      overflow-x: auto; white-space: pre;
+      color: #a5d6ff;
+    }
+    .arch-box .comment { color: var(--muted); }
+    .arch-box .highlight { color: var(--accent4); }
+    .arch-box .green { color: var(--accent2); }
+    .arch-box .purple { color: var(--accent3); }
+
+    /* FORMULA */
+    .formula-block {
+      background: var(--code-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 1.25rem 1.5rem;
+      font-family: monospace; font-size: 0.9rem;
+      margin: 1.5rem 0; color: #a5d6ff;
+    }
+
+    /* CODE */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.5rem;
+      font-size: 0.82rem; overflow-x: auto;
+      line-height: 1.7;
+    }
+    code { font-family: "SFMono-Regular", Consolas, monospace; }
+    .kw { color: #ff7b72; }
+    .fn { color: #d2a8ff; }
+    .st { color: #a5d6ff; }
+    .cm { color: var(--muted); font-style: italic; }
+    .nb { color: #ffa657; }
+
+    /* NOTEBOOKS */
+    .notebooks { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .nb-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.25rem;
+      transition: border-color .2s;
+    }
+    .nb-card:hover { border-color: var(--accent2); }
+    .nb-num {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem;
+    }
+    .nb-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .nb-card p { font-size: 0.8rem; color: var(--muted); }
+
+    /* INSTALL STEPS */
+    .steps { display: flex; flex-direction: column; gap: 1.5rem; }
+    .step { display: flex; gap: 1.25rem; }
+    .step-num {
+      flex-shrink: 0; width: 32px; height: 32px;
+      background: rgba(88,166,255,0.12); border: 1px solid rgba(88,166,255,0.3);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; color: var(--accent); margin-top: 2px;
+    }
+    .step-body h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .step-body p { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.6rem; }
+
+    /* STATS */
+    .stats { display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 2rem; }
+    .stat { text-align: center; }
+    .stat-val { font-size: 2rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: 0.8rem; color: var(--muted); }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    hr.divider {
+      border: none; border-top: 1px solid var(--border);
+      max-width: 960px; margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="nav-logo">⬡ TemporalMesh Transformer</span>
+  <div class="nav-links">
+    <a href="#difference">Difference</a>
+    <a href="#innovations">Innovations</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#install">Install</a>
+    <a href="#notebooks">Notebooks</a>
+    <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" target="_blank">GitHub →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">Novel Architecture · 2026</div>
+  <h1>TemporalMesh Transformer</h1>
+  <p class="hero-sub">
+    The first transformer to combine dynamic graph topology, token-level adaptive compute,
+    and temporal semantic decay into a single unified model — built from scratch in PyTorch.
+  </p>
+  <div class="hero-buttons">
+    <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" class="btn btn-primary" target="_blank">
+      ⭐ View on GitHub
+    </a>
+    <a href="#install" class="btn btn-ghost">Get Started →</a>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val">3</div><div class="stat-label">Core Innovations</div></div>
+    <div class="stat"><div class="stat-val">~50%</div><div class="stat-label">Avg Compute Saved</div></div>
+    <div class="stat"><div class="stat-val">15</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat"><div class="stat-val">9</div><div class="stat-label">Model Components</div></div>
+  </div>
+</div>
+
+<!-- DIFFERENCE BANNER -->
+<div id="difference" class="diff-banner" style="padding: 0 2rem;">
+  <div style="max-width:860px; margin: 0 auto; padding: 2.5rem 0;">
+    <h2>What Makes TMT Different</h2>
+    <p>
+      Every existing transformer makes three assumptions: all tokens are equally important,
+      the sequence is flat, and every token deserves the same compute budget.
+      <strong style="color:var(--text)">TMT breaks all three at once.</strong>
+      The graph topology changes every forward pass. Tokens exit at different depths.
+      Semantically distant tokens fade. No prior architecture does all three together.
+    </p>
+  </div>
+</div>
+
+<hr class="divider" />
+
+<!-- COMPARISON TABLE -->
+<section>
+  <div class="section-label">vs existing work</div>
+  <h2 class="section-title">How TMT Compares</h2>
+  <p class="section-desc">Every column below is a limitation in the existing architecture that TMT addresses.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Architecture</th>
+          <th>Dynamic Graph</th>
+          <th>Per-Token Depth</th>
+          <th>Temporal Decay</th>
+          <th>Persistent Memory</th>
+          <th>Dual-Stream FFN</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Standard Transformer (GPT)</td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+        </tr>
+        <tr>
+          <td>Graph Transformer</td>
+          <td><span class="tag tag-no">✗ Fixed only</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+        </tr>
+        <tr>
+          <td>Early Exit Transformer</td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-yes">✓ Partial</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+        </tr>
+        <tr>
+          <td>RoPE / ALiBi</td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ Position only</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+        </tr>
+        <tr>
+          <td>Mixture of Experts</td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ Layer-level only</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+          <td><span class="tag tag-no">✗ No</span></td>
+        </tr>
+        <tr class="highlight-row">
+          <td><strong>TemporalMesh Transformer</strong></td>
+          <td><span class="tag tag-yes">✓ Dynamic</span></td>
+          <td><span class="tag tag-yes">✓ Per-token</span></td>
+          <td><span class="tag tag-yes">✓ Semantic</span></td>
+          <td><span class="tag tag-yes">✓ EMA anchors</span></td>
+          <td><span class="tag tag-yes">✓ Yes</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- INNOVATIONS -->
+<section id="innovations">
+  <div class="section-label">Core Innovations</div>
+  <h2 class="section-title">Three Ideas. One Model.</h2>
+  <p class="section-desc">Each innovation solves a different fundamental limitation of the standard transformer.</p>
+  <div class="innovations">
+    <div class="inn-card">
+      <div class="inn-icon blue">⬡</div>
+      <h3>Mesh Attention</h3>
+      <p>Tokens are nodes in a graph. Edges are recomputed each forward pass using cosine similarity. Only top-k neighbours are connected. O(S·k) instead of O(S²). The graph topology itself changes as token meanings evolve through layers.</p>
+      <div class="formula-block" style="margin-top:1rem; font-size:0.75rem;">
+edge_index = topk(cosine_sim(X), k=8)
+attention over edges only — not full S×S
+      </div>
+    </div>
+    <div class="inn-card">
+      <div class="inn-icon green">⏱</div>
+      <h3>Temporal Decay</h3>
+      <p>Each token carries a learned decay scalar. Semantically distant tokens are attenuated before they reach the attention layer. The decay is multiplied into attention weights — not added as a positional bias.</p>
+      <div class="formula-block" style="margin-top:1rem; font-size:0.75rem;">
+attn = softmax(QKᵀ/√d)
+     × sigmoid(W_decay · t)
+      </div>
+    </div>
+    <div class="inn-card">
+      <div class="inn-icon purple">⚡</div>
+      <h3>Adaptive Depth Routing</h3>
+      <p>After each layer, a single linear → sigmoid gives each token a confidence score. If confidence &gt; 0.85, that token freezes and skips all remaining layers. Easy tokens use 2 layers. Hard tokens use 12. ~50% compute saved.</p>
+      <div class="formula-block" style="margin-top:1rem; font-size:0.75rem;">
+conf = sigmoid(W_gate · x)
+if conf &gt; 0.85: token exits
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ARCHITECTURE -->
+<section id="architecture">
+  <div class="section-label">Architecture</div>
+  <h2 class="section-title">How It Works</h2>
+  <p class="section-desc">Every forward pass returns a TMTOutput dataclass — logits plus full diagnostic tensors.</p>
+  <div class="arch-box"><span class="comment">input_ids (B, S)
+    │</span>
+    ▼
+<span class="highlight">TokenEmbedding</span>          → (B, S, D)
+    │
+<span class="highlight">TemporalPositionEncoder</span> → RoPE + learned decay scalars (B, S, D)
+    │
+<span class="highlight">MeshBuilder</span>             → edge_index (2, E),  edge_weight (E,)
+    │
+<span class="green">TMTLayer × 12:</span>
+    ├── <span class="purple">MeshAttention</span>       graph-restricted + temporal decay
+    ├── <span class="purple">DualStreamFFN</span>       syntax stream + semantic stream → learned gate
+    ├── <span class="purple">ExitGate</span>            per-token confidence → freeze if > 0.85
+    └── <span class="purple">MemoryAnchorCross</span>   cross-attend 16 persistent EMA anchors
+    │
+<span class="highlight">OutputProjection</span>        → (B, S, vocab_size)
+
+<span class="comment">Returns TMTOutput:
+  logits        (B, S, V)
+  exit_masks    list[(B, S) bool]   — one per layer
+  confidences   list[(B, S) float]  — gate score per token
+  graph_edges   (edge_index, edge_weight)
+  memory_state  (16, D)
+  decay_scalars (B, S, D)</span></div>
+</section>
+
+<hr class="divider" />
+
+<!-- INSTALL -->
+<section id="install">
+  <div class="section-label">Getting Started</div>
+  <h2 class="section-title">Install & Run</h2>
+  <p class="section-desc">Four steps from zero to a running model.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Clone the repository</h4>
+        <pre><code>git clone https://github.com/vignesh2027/TemporalMesh-Transformer.git
+cd TemporalMesh-Transformer</code></pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Create a virtual environment</h4>
+        <p>Required on macOS with Homebrew Python.</p>
+        <pre><code>python3 -m venv .venv
+source .venv/bin/activate</code></pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Install dependencies</h4>
+        <pre><code>pip install -r requirements.txt</code></pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>Verify — all 15 tests should pass</h4>
+        <pre><code>pytest tests/ -v</code></pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h4>Train a model</h4>
+        <pre><code><span class="kw">from</span> tmt.model.config <span class="kw">import</span> TMTConfig
+<span class="kw">from</span> tmt.training.trainer <span class="kw">import</span> TMTTrainer, TrainConfig
+<span class="kw">from</span> tmt.data.dataset <span class="kw">import</span> load_text_dataset
+
+cfg = <span class="fn">TMTConfig</span>(vocab_size=<span class="nb">50258</span>, d_model=<span class="nb">256</span>, n_heads=<span class="nb">4</span>, n_layers=<span class="nb">4</span>)
+loaders = <span class="fn">load_text_dataset</span>(<span class="st">'wikitext-2'</span>, seq_len=<span class="nb">128</span>, batch_size=<span class="nb">8</span>)
+trainer = <span class="fn">TMTTrainer</span>(cfg, <span class="fn">TrainConfig</span>(total_steps=<span class="nb">500</span>),
+                     loaders[<span class="st">'train'</span>], loaders[<span class="st">'validation'</span>])
+trainer.<span class="fn">train</span>()</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- NOTEBOOKS -->
+<section id="notebooks">
+  <div class="section-label">Experiments</div>
+  <h2 class="section-title">Ablation Notebooks</h2>
+  <p class="section-desc">Run these four notebooks in order to reproduce the ablation study and measure each innovation's contribution.</p>
+  <div class="notebooks">
+    <div class="nb-card">
+      <div class="nb-num">Notebook 01</div>
+      <h4>Vanilla Baseline</h4>
+      <p>Standard GPT-style transformer. Same parameter budget. Control group for comparison.</p>
+    </div>
+    <div class="nb-card">
+      <div class="nb-num">Notebook 02</div>
+      <h4>Mesh Only</h4>
+      <p>Mesh attention active, decay and exit gate disabled. Isolates Innovation 1.</p>
+    </div>
+    <div class="nb-card">
+      <div class="nb-num">Notebook 03</div>
+      <h4>Full TMT</h4>
+      <p>All three innovations active. The main experimental result.</p>
+    </div>
+    <div class="nb-card">
+      <div class="nb-num">Notebook 04</div>
+      <h4>Compare</h4>
+      <p>Perplexity table + bar chart across all three configurations.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- CITATION -->
+<section>
+  <div class="section-label">Citation</div>
+  <h2 class="section-title">Cite This Work</h2>
+  <pre><code>@misc{tmt2026,
+  title  = {TemporalMesh Transformer: Dynamic Graph Attention with
+            Temporal Decay and Adaptive Depth Routing},
+  author = {Vignesh},
+  year   = {2026},
+  url    = {https://github.com/vignesh2027/TemporalMesh-Transformer}
+}</code></pre>
+</section>
+
+<footer>
+  Built from scratch in PyTorch ·
+  <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" target="_blank">GitHub</a> ·
+  MIT License
+</footer>
+
+</body>
+</html>
