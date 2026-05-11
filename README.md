@@ -26,7 +26,18 @@ Before explaining what TMT does, it helps to understand what it is NOT:
 
 That fusion — not any single innovation — is the novelty.
 
----
+---Three things that no single transformer does together:
+
+1. The graph rebuilds itself every forward pass
+Standard transformers — every token looks at every other token, always, equally. TMT builds a graph from what the tokens currently mean and only connects the 8 most similar ones. Then after each layer, as token meanings change, the graph rebuilds. The connections adapt in real time.
+
+2. Important tokens get amplified, irrelevant ones fade
+In GPT/LLaMA, a token from position 1 and position 500 are treated with equal weight. TMT applies a learned decay — tokens that are semantically far from what's being predicted right now get quieter. The model learns which distance matters, not just how far away something is.
+
+3. Easy tokens exit early, hard tokens go deeper
+In every existing transformer, a comma and a rare scientific term spend the exact same compute — all 12 layers. TMT gives each token a confidence score after each layer. If it's confident, the token stops. This means ~50% of tokens might only use 4 layers while hard tokens use all 12. Same accuracy, half the compute on average.
+
+
 
 ## The Three Core Innovations
 
