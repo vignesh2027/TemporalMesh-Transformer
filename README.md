@@ -14,6 +14,9 @@
 
 <br/>
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20287390.svg)](https://doi.org/10.5281/zenodo.20287390)
+[![Zenodo](https://img.shields.io/badge/Zenodo-Published-024BA3?style=flat-square&logo=zenodo)](https://zenodo.org/records/20287390)
+[![HuggingFace](https://img.shields.io/badge/HuggingFace-Model%20%26%20Dataset-FFD21E?style=flat-square&logo=huggingface&logoColor=black)](https://huggingface.co/vigneshwar234/TemporalMesh-Transformer)
 [![Open in Colab](https://img.shields.io/badge/Open%20in%20Colab-F9AB00?style=flat-square&logo=googlecolab&logoColor=black)](https://colab.research.google.com/github/vignesh2027/TemporalMesh-Transformer)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Docs-0078d7?style=flat-square&logo=github)](https://vignesh2027.github.io/TemporalMesh-Transformer)
 [![Issues](https://img.shields.io/github/issues/vignesh2027/TemporalMesh-Transformer?style=flat-square&color=e11d48)](https://github.com/vignesh2027/TemporalMesh-Transformer/issues)
