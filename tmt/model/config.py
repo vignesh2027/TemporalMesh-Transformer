@@ -5,7 +5,7 @@ Novel vs standard: a single config surface that governs dynamic graph topology
 (graph_k), per-token adaptive depth (exit_threshold), temporal decay rate, and
 the dual-stream FFN — none of which exist in vanilla transformer configs.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass

@@ -35,5 +35,11 @@ exclude = ["tmt/experiments/"]
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["tmt"]
+
+[tool.setuptools.packages.find]
+include = ["tmt*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

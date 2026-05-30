@@ -11,7 +11,7 @@ Formula: attn = softmax(QK^T / sqrt(d)) * sigmoid(W_decay * temporal_distance)
 from __future__ import annotations
 
 import math
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.nn as nn
