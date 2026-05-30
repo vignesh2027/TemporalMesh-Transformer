@@ -1,0 +1,7 @@
+# Minimal deps for running tests in CI (CPU-only torch)
+# Usage: pip install torch --index-url https://download.pytorch.org/whl/cpu
+#        pip install -r requirements-ci.txt
+einops>=0.7.0
+pytest>=8.0.0
+pytest-cov>=5.0.0
+ruff>=0.4.0

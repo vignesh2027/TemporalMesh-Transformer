@@ -6,8 +6,9 @@
 
 <br/>
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![CI](https://github.com/vignesh2027/TemporalMesh-Transformer/actions/workflows/ci.yml/badge.svg)](https://github.com/vignesh2027/TemporalMesh-Transformer/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.2%2B-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
 [![Architecture](https://img.shields.io/badge/Architecture-Novel%20Transformer-8b5cf6?style=for-the-badge&logo=academia&logoColor=white)](https://github.com/vignesh2027/TemporalMesh-Transformer)
 [![Stars](https://img.shields.io/github/stars/vignesh2027/TemporalMesh-Transformer?style=for-the-badge&color=f59e0b&logo=github)](https://github.com/vignesh2027/TemporalMesh-Transformer/stargazers)
@@ -455,6 +456,53 @@ model.eval()
 </div>
 
 > **No prior paper combines all of the above into a single unified architecture.** That fusion is the research contribution.
+
+---
+
+## 🛠️ Development
+
+### Running Tests Locally
+
+```bash
+# Fast install — CPU torch only, no heavy ML deps
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install einops pytest pytest-cov
+pip install -e . --no-deps
+
+# Run all 15 tests
+pytest tests/ -v
+
+# With coverage report
+pytest tests/ -v --cov=tmt --cov-report=term-missing
+```
+
+### Lint
+
+```bash
+pip install ruff
+ruff check tmt/ tests/
+```
+
+### CI
+
+Every push to `main` and every pull request runs the full test suite on Python 3.10, 3.11, and 3.12 via GitHub Actions. The CI installs CPU-only PyTorch to keep runs fast (~3 min).
+
+### Adding Tests
+
+- **Shape tests** → [tests/test_shapes.py](tests/test_shapes.py) — unit test a single module's output tensor shape
+- **Forward/invariant tests** → [tests/test_forward.py](tests/test_forward.py) — end-to-end forward pass, backward pass, model invariants
+
+### Project Layout for Contributors
+
+```
+tmt/model/      ← Architecture modules (config, embedding, mesh, attention, ffn, exit_gate, memory, layers, model)
+tmt/training/   ← Training loop, loss function, LR scheduler
+tmt/data/       ← Dataset loader and tokenizer wrapper
+tmt/experiments/← Jupyter notebooks: baseline → ablation → comparison
+tests/          ← pytest test suite (15 tests, all must pass)
+docs/           ← GitHub Pages site
+paper/          ← Architecture figures and the PDF paper
+```
 
 ---
 

@@ -244,6 +244,7 @@
     <a href="#architecture">Architecture</a>
     <a href="#install">Install</a>
     <a href="#notebooks">Notebooks</a>
+    <a href="#tests">Tests</a>
     <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" target="_blank">GitHub →</a>
   </div>
 </nav>
@@ -261,6 +262,17 @@
       ⭐ View on GitHub
     </a>
     <a href="#install" class="btn btn-ghost">Get Started →</a>
+    <a href="https://github.com/vignesh2027/TemporalMesh-Transformer/actions/workflows/ci.yml" class="btn btn-ghost" target="_blank">
+      ✅ CI Passing
+    </a>
+  </div>
+
+  <div style="margin-top:1.5rem; display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+    <img src="https://github.com/vignesh2027/TemporalMesh-Transformer/actions/workflows/ci.yml/badge.svg" alt="CI" style="height:20px"/>
+    <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python" style="height:20px"/>
+    <img src="https://img.shields.io/badge/PyTorch-2.2%2B-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch" style="height:20px"/>
+    <img src="https://img.shields.io/badge/License-MIT-22c55e" alt="MIT" style="height:20px"/>
+    <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20287390.svg" alt="DOI" style="height:20px"/>
   </div>
 
   <div class="stats">
@@ -268,6 +280,7 @@
     <div class="stat"><div class="stat-val">~50%</div><div class="stat-label">Avg Compute Saved</div></div>
     <div class="stat"><div class="stat-val">15</div><div class="stat-label">Tests Passing</div></div>
     <div class="stat"><div class="stat-val">9</div><div class="stat-label">Model Components</div></div>
+    <div class="stat"><div class="stat-val">3×</div><div class="stat-label">Python Versions Tested</div></div>
   </div>
 </div>
 
@@ -514,6 +527,49 @@ trainer.<span class="fn">train</span>()</code></pre>
       <h4>Compare</h4>
       <p>Perplexity table + bar chart across all three configurations.</p>
     </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- TESTS -->
+<section id="tests">
+  <div class="section-label">Verified Correctness</div>
+  <h2 class="section-title">Test Suite — 15 / 15 Passing</h2>
+  <p class="section-desc">Every module has shape assertions. The full model has end-to-end forward, backward, and invariant tests. CI runs on Python 3.10, 3.11, and 3.12 on every push.</p>
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.5rem;">
+      <div style="font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:1rem;">tests/test_shapes.py — 8 tests</div>
+      <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.82rem; font-family:monospace;">
+        <span style="color:var(--accent2)">✓ test_token_embedding</span>
+        <span style="color:var(--accent2)">✓ test_temporal_position_encoder</span>
+        <span style="color:var(--accent2)">✓ test_mesh_builder</span>
+        <span style="color:var(--accent2)">✓ test_mesh_attention</span>
+        <span style="color:var(--accent2)">✓ test_dual_stream_ffn</span>
+        <span style="color:var(--accent2)">✓ test_exit_gate</span>
+        <span style="color:var(--accent2)">✓ test_memory_anchor_cross</span>
+        <span style="color:var(--accent2)">✓ test_tmt_layer</span>
+      </div>
+    </div>
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.5rem;">
+      <div style="font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:1rem;">tests/test_forward.py — 7 tests</div>
+      <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.82rem; font-family:monospace;">
+        <span style="color:var(--accent2)">✓ test_full_forward_shape</span>
+        <span style="color:var(--accent2)">✓ test_output_has_all_fields</span>
+        <span style="color:var(--accent2)">✓ test_loss_computable</span>
+        <span style="color:var(--accent2)">✓ test_backward_pass</span>
+        <span style="color:var(--accent2)">✓ test_exit_mask_monotone</span>
+        <span style="color:var(--accent2)">✓ test_no_nan_in_logits</span>
+        <span style="color:var(--accent2)">✓ test_model_repr</span>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:1.5rem;">
+    <pre><code># Run locally (CPU-only torch, fast)
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install einops pytest pytest-cov
+pip install -e . --no-deps
+pytest tests/ -v --cov=tmt</code></pre>
   </div>
 </section>
 
