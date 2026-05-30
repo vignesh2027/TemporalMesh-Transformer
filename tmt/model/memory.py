@@ -74,13 +74,14 @@ class MemoryAnchorCross(nn.Module):
         out = rearrange(out, "b h s d -> b s (h d)")
         out = self.out_proj(out)
 
-        # EMA update of memory anchors using mean token representation
-        with torch.no_grad():
-            token_mean = x.mean(dim=1).mean(dim=0)  # (D,) across batch
-            self.memory.data = (
-                self.ema_alpha * self.memory.data
-                + (1 - self.ema_alpha) * token_mean.unsqueeze(0)
-            )
+        # EMA update only during training — eval must be deterministic
+        if self.training:
+            with torch.no_grad():
+                token_mean = x.mean(dim=1).mean(dim=0)  # (D,) across batch
+                self.memory.data = (
+                    self.ema_alpha * self.memory.data
+                    + (1 - self.ema_alpha) * token_mean.unsqueeze(0)
+                )
 
         return out, self.memory.detach()
 

@@ -7,22 +7,60 @@ name = "temporal-mesh-transformer"
 version = "0.1.0"
 description = "TemporalMesh Transformer — dynamic graph attention with temporal decay and adaptive depth routing"
 requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Vignesh S", email = "applemacbook6sep2004@gmail.com"},
+]
+keywords = [
+    "transformer", "deep-learning", "pytorch", "graph-neural-network",
+    "adaptive-compute", "sparse-attention", "temporal-decay", "early-exit",
+    "novel-architecture", "language-model", "nlp",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "torch>=2.2.0",
     "einops>=0.7.0",
+]
+
+[project.optional-dependencies]
+train = [
     "transformers>=4.40.0",
     "datasets>=2.19.0",
     "tokenizers>=0.19.0",
     "wandb>=0.17.0",
     "tensorboard>=2.16.0",
-    "matplotlib>=3.8.0",
-    "jupyter>=1.0.0",
     "pandas>=2.2.0",
     "tabulate>=0.9.0",
 ]
+notebooks = [
+    "jupyter>=1.0.0",
+    "matplotlib>=3.8.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.4.0",
+    "numpy>=1.26.0",
+]
 
-[project.optional-dependencies]
-dev = ["pytest>=8.0.0", "black>=24.0.0", "ruff>=0.4.0"]
+[project.urls]
+Homepage = "https://vignesh2027.github.io/TemporalMesh-Transformer"
+Repository = "https://github.com/vignesh2027/TemporalMesh-Transformer"
+Documentation = "https://vignesh2027.github.io/TemporalMesh-Transformer"
+"Bug Tracker" = "https://github.com/vignesh2027/TemporalMesh-Transformer/issues"
+Paper = "https://doi.org/10.5281/zenodo.20287390"
 
 [tool.black]
 line-length = 100

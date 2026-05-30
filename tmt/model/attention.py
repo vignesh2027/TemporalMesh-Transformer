@@ -89,10 +89,10 @@ class MeshAttention(nn.Module):
             dst_local = dst_global % S
             mask[b_idx, src_local, dst_local] = edge_weight.float()
 
-        # Also allow causal self (diagonal) so every token has at least itself
-        diag_mask = torch.zeros(S, S, device=x.device)
-        diag_mask.fill_diagonal_(0.0)
-        mask = mask + diag_mask.unsqueeze(0)
+        # Allow self-attention on the diagonal so every token attends to itself.
+        # Direct index-assignment instead of add so -inf diagonal becomes 0.
+        diag_idx = torch.arange(S, device=x.device)
+        mask[:, diag_idx, diag_idx] = 0.0
 
         # Apply graph mask
         scores = scores + mask.unsqueeze(1)  # broadcast over heads

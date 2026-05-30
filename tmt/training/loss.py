@@ -48,7 +48,7 @@ def compute_loss(
 
     # Exit gate auxiliary: encourage decisiveness
     # Loss = -E[|conf - 0.5|] — penalise uncertainty
-    gate_loss = torch.zeros(1, device=logits.device)
+    gate_loss = torch.zeros((), device=logits.device)
     for conf in confidences:
         gate_loss = gate_loss + -(conf - 0.5).abs().mean()
     gate_loss = gate_loss / max(len(confidences), 1)

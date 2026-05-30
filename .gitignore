@@ -34,3 +34,4 @@ Thumbs.db
 # Data cache
 ~/.cache/huggingface/
 data/cache/
+.coverage
