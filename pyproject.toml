@@ -33,10 +33,7 @@ line-length = 100
 exclude = ["tmt/experiments/"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
-
-[tool.ruff.lint.isort]
-known-first-party = ["tmt"]
+select = ["E", "F"]
 
 [tool.setuptools.packages.find]
 include = ["tmt*"]

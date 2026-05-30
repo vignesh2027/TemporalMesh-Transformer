@@ -7,12 +7,11 @@ Logs: train loss, val perplexity, exit rate per layer, and memory anchor norms.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
