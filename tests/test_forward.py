@@ -3,8 +3,8 @@ test_forward.py — full end-to-end forward pass smoke tests.
 
 Run: pytest tests/test_forward.py -v
 """
-import torch
 import pytest
+import torch
 
 from tmt.model.config import TMTConfig
 from tmt.model.model import TMTModel, TMTOutput

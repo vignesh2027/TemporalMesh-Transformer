@@ -3,8 +3,8 @@ test_shapes.py — assert every module output shape is correct.
 
 Run: pytest tests/test_shapes.py -v
 """
-import torch
 import pytest
+import torch
 
 from tmt.model.config import TMTConfig
 from tmt.model.embedding import TokenEmbedding, TemporalPositionEncoder
