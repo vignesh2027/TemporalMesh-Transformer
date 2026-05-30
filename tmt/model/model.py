@@ -9,7 +9,7 @@ intermediate diagnostic tensors (exit_masks, graph edges, memory state).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 import torch

@@ -53,7 +53,6 @@ class MemoryAnchorCross(nn.Module):
             memory_state: (M, D) updated memory anchors (detached for logging)
         """
         B, S, D = x.shape
-        M = self.n_anchors
         scale = self.d_head ** -0.5
 
         # Queries come from tokens, Keys/Values from memory anchors

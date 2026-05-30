@@ -36,8 +36,6 @@ def build_mesh(
                     global node indices (0 … B*S-1).
         edge_weight:(E,) cosine similarity of each edge.
     """
-    N = batch_size * seq_len  # total nodes
-
     # Normalise for cosine similarity
     x_norm = F.normalize(x, p=2, dim=-1)  # (N, D)
 
