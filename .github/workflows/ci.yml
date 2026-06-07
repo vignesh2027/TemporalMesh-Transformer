@@ -6,7 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
+  # ── Tests ──────────────────────────────────────────────────────────────────
   test:
     name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -24,18 +32,28 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install test dependencies
+      - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install einops numpy pytest pytest-cov
           pip install -e . --no-deps
 
-      - name: Run tests
-        run: pytest tests/ -v --tb=short --cov=tmt --cov-report=term-missing
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v --tb=short \
+            --cov=tmt --cov-report=xml --cov-report=term-missing
 
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-py${{ matrix.python-version }}
+          path: coverage.xml
+          retention-days: 7
+
+  # ── Lint ───────────────────────────────────────────────────────────────────
   lint:
-    name: Lint
+    name: Lint (ruff)
     runs-on: ubuntu-latest
 
     steps:
@@ -53,8 +71,33 @@ jobs:
       - name: Ruff check
         run: ruff check tmt/ tests/
 
+  # ── Type-check ─────────────────────────────────────────────────────────────
+  type-check:
+    name: Type-check (pyright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install einops numpy pyright
+          pip install -e . --no-deps
+
+      - name: Run pyright (basic)
+        run: pyright tmt/ --pythonversion 3.11 || true
+
+  # ── Build ──────────────────────────────────────────────────────────────────
   build:
-    name: Build wheel
+    name: Build wheel & sdist
     runs-on: ubuntu-latest
 
     steps:
@@ -65,8 +108,105 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Build wheel and sdist
+      - name: Build distributions
         run: |
           pip install build twine
           python -m build
-          twine check dist/*
+
+      - name: Twine check
+        run: twine check dist/*
+
+  # ── Security ───────────────────────────────────────────────────────────────
+  security:
+    name: Security scan (bandit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Run bandit
+        run: bandit -r tmt/ -ll --exit-zero
+
+  # ── Benchmark ──────────────────────────────────────────────────────────────
+  benchmark:
+    name: Quick timing benchmark
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install einops numpy
+          pip install -e . --no-deps
+
+      - name: Run timing benchmark
+        run: |
+          python -c "
+          import time, torch
+          from tmt.model.config import TMTConfig
+          from tmt.model.model import TMTModel
+
+          cfg = TMTConfig(
+              vocab_size=1000, d_model=64, n_heads=4, n_layers=2,
+              max_seq_len=64, graph_k=4, ffn_stream_dim=32, memory_anchors=4,
+          )
+          model = TMTModel(cfg)
+          model.eval()
+          ids = torch.randint(0, cfg.vocab_size, (2, 32))
+
+          # Warmup
+          with torch.no_grad():
+              for _ in range(3):
+                  model(ids)
+
+          # Timed runs
+          times = []
+          with torch.no_grad():
+              for _ in range(10):
+                  t0 = time.perf_counter()
+                  model(ids)
+                  times.append(time.perf_counter() - t0)
+
+          avg_ms = sum(times) / len(times) * 1000
+          print(f'TMTModel forward pass: {avg_ms:.1f} ms avg over 10 runs')
+          print(f'Model params: {model.param_count():,}')
+          assert avg_ms < 30000, f'Forward pass too slow: {avg_ms:.1f} ms'
+          "
+
+  # ── Docs check ─────────────────────────────────────────────────────────────
+  docs-check:
+    name: Docs content check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify docs/index.html exists and has content
+        run: |
+          test -f docs/index.html || (echo "docs/index.html missing" && exit 1)
+          wc -c docs/index.html
+          python3 -c "
+          with open('docs/index.html') as f:
+              content = f.read()
+          assert len(content) > 5000, 'docs/index.html is too small'
+          assert 'TemporalMesh' in content, 'Title missing'
+          assert 'zenodo' in content.lower() or 'Zenodo' in content, 'Zenodo link missing'
+          print(f'docs/index.html OK: {len(content):,} bytes')
+          "
