@@ -60,7 +60,7 @@ Homepage = "https://vignesh2027.github.io/TemporalMesh-Transformer"
 Repository = "https://github.com/vignesh2027/TemporalMesh-Transformer"
 Documentation = "https://vignesh2027.github.io/TemporalMesh-Transformer"
 "Bug Tracker" = "https://github.com/vignesh2027/TemporalMesh-Transformer/issues"
-Paper = "https://doi.org/10.5281/zenodo.20287390"
+Paper = "https://doi.org/10.5281/zenodo.20287197"
 
 [tool.black]
 line-length = 100

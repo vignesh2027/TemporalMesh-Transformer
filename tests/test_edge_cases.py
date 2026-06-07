@@ -9,7 +9,6 @@ from tmt.model.model import TMTModel
 from tmt.model.mesh import build_mesh
 from tmt.model.attention import MeshAttention
 from tmt.model.exit_gate import ExitGate
-from tmt.model.embedding import TokenEmbedding, TemporalPositionEncoder
 from tmt.model.ffn import DualStreamFFN
 from tmt.model.mesh import MeshBuilder
 from tmt.training.loss import compute_loss

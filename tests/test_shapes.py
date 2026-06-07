@@ -5,7 +5,6 @@ Run: pytest tests/test_shapes.py -v
 """
 import pytest
 import torch
-import torch.nn as nn
 
 from tmt.model.config import TMTConfig
 from tmt.model.embedding import TokenEmbedding, TemporalPositionEncoder

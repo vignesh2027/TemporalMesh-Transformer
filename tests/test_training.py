@@ -1,13 +1,11 @@
 """
 test_training.py — tests for loss, scheduler, and exit gate auxiliary loss.
 """
-import math
 import pytest
 import torch
 import torch.nn as nn
 
 from tmt.model.config import TMTConfig
-from tmt.model.model import TMTModel
 from tmt.model.exit_gate import ExitGate
 from tmt.training.loss import compute_loss
 from tmt.training.scheduler import cosine_warmup_scheduler

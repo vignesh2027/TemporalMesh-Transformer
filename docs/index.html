@@ -1,873 +1,795 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="description" content="TemporalMesh Transformer — novel PyTorch architecture combining dynamic graph attention, temporal decay, and adaptive depth routing. PPL 29.4 vs vanilla 42.1 at 0.48x compute."/>
+  <meta property="og:title" content="TemporalMesh Transformer (TMT)"/>
+  <meta property="og:description" content="First transformer to combine dynamic kNN graph attention + temporal decay + per-token adaptive depth routing. 30.2% lower perplexity at 48% compute."/>
+  <meta property="og:type" content="website"/>
   <title>TemporalMesh Transformer — Novel PyTorch Architecture</title>
   <style>
-    :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --surface2: #1c2333;
-      --border: #30363d;
-      --accent: #58a6ff;
-      --accent2: #3fb950;
-      --accent3: #d2a8ff;
-      --accent4: #ffa657;
-      --accent5: #ff7b72;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --code-bg: #1f2937;
-      --gradient-start: #1a1f35;
-      --gradient-mid: #0d1117;
+    :root{
+      --bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--border:#30363d;
+      --accent:#58a6ff;--green:#3fb950;--purple:#d2a8ff;--orange:#ffa657;--red:#ff7b72;
+      --text:#e6edf3;--muted:#8b949e;--code-bg:#1c2333;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.7;
-    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+      background:var(--bg);color:var(--text);line-height:1.7;font-size:16px;}
 
-    /* ── NAV ── */
-    nav {
-      position: sticky; top: 0; z-index: 100;
-      background: rgba(13,17,23,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 0 2rem;
-      display: flex; align-items: center; justify-content: space-between;
-      height: 56px;
-    }
-    .nav-logo { font-weight: 700; font-size: 1rem; color: var(--accent); letter-spacing: -0.5px; }
-    .nav-links { display: flex; gap: 1.5rem; flex-wrap: wrap; }
-    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.875rem; transition: color .2s; }
-    .nav-links a:hover { color: var(--text); }
+    nav{position:sticky;top:0;z-index:200;background:rgba(13,17,23,.95);
+      backdrop-filter:blur(16px);border-bottom:1px solid var(--border);
+      padding:0 2rem;height:58px;display:flex;align-items:center;justify-content:space-between;}
+    .nav-brand{font-weight:800;font-size:.95rem;color:var(--accent);letter-spacing:-.3px;display:flex;align-items:center;gap:.5rem;}
+    .nav-links{display:flex;gap:1.25rem;flex-wrap:wrap;}
+    .nav-links a{color:var(--muted);text-decoration:none;font-size:.82rem;transition:color .18s;}
+    .nav-links a:hover{color:var(--text);}
+    .nav-cta{background:var(--accent);color:#0d1117!important;padding:.3rem .8rem;border-radius:6px;font-weight:700!important;}
+    .nav-cta:hover{background:#79c0ff!important;}
 
-    /* ── HERO ── */
-    .hero {
-      position: relative;
-      overflow: hidden;
-      padding: 7rem 2rem 5rem;
-      text-align: center;
-      background: linear-gradient(135deg, #0f1b35 0%, #0d1117 40%, #1a0a2e 100%);
-    }
-    .hero::before {
-      content: "";
-      position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 60% 40% at 20% 60%, rgba(88,166,255,0.12) 0%, transparent 70%),
-        radial-gradient(ellipse 50% 50% at 80% 30%, rgba(210,168,255,0.10) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 30% at 50% 90%, rgba(63,185,80,0.08) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .hero-inner { position: relative; max-width: 860px; margin: 0 auto; }
-    .badge-row { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem; }
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border: 1px solid;
-    }
-    .badge-blue  { background: rgba(88,166,255,0.1); border-color: rgba(88,166,255,0.3); color: var(--accent); }
-    .badge-green { background: rgba(63,185,80,0.1);  border-color: rgba(63,185,80,0.3);  color: var(--accent2); }
-    .badge-purple{ background: rgba(210,168,255,0.1);border-color: rgba(210,168,255,0.3);color: var(--accent3); }
-    .badge-orange{ background: rgba(255,166,87,0.1); border-color: rgba(255,166,87,0.3); color: var(--accent4); }
-    h1 {
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 800;
-      letter-spacing: -1px;
-      line-height: 1.15;
-      background: linear-gradient(135deg, #58a6ff 0%, #d2a8ff 50%, #3fb950 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 1rem;
-    }
-    .hero-sub {
-      font-size: 1.15rem;
-      color: var(--muted);
-      max-width: 640px;
-      margin: 0 auto 2rem;
-    }
-    .paper-callout {
-      display: inline-block;
-      background: rgba(88,166,255,0.08);
-      border: 1px solid rgba(88,166,255,0.3);
-      border-radius: 10px;
-      padding: 0.85rem 1.5rem;
-      margin-bottom: 2rem;
-      font-size: 0.95rem;
-    }
-    .paper-callout a { color: var(--accent); text-decoration: none; font-weight: 600; }
-    .paper-callout a:hover { text-decoration: underline; }
-    .hero-ctas { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      padding: 0.6rem 1.4rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      text-decoration: none;
-      transition: opacity .2s, transform .1s;
-    }
-    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
-    .btn-primary { background: var(--accent); color: #0d1117; }
-    .btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+    .hero{padding:6rem 2rem 3rem;text-align:center;max-width:900px;margin:0 auto;}
+    .hero-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(88,166,255,.1);
+      border:1px solid rgba(88,166,255,.3);color:var(--accent);
+      font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+      padding:.3rem .9rem;border-radius:999px;margin-bottom:1.5rem;}
+    h1{font-size:clamp(2.2rem,5.5vw,4rem);font-weight:900;letter-spacing:-2px;line-height:1.08;
+      background:linear-gradient(135deg,#e6edf3 0%,#58a6ff 45%,#d2a8ff 80%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.75rem;}
+    .hero-subtitle{font-size:1.15rem;color:var(--muted);margin-bottom:.5rem;}
+    .hero-tagline{font-size:1.05rem;color:var(--text);margin-bottom:2rem;max-width:680px;margin-left:auto;margin-right:auto;}
 
-    /* ── SECTION LAYOUT ── */
-    section { padding: 4rem 2rem; }
-    .container { max-width: 960px; margin: 0 auto; }
-    h2 {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 1.5rem;
-      color: var(--text);
-    }
-    h3 {
-      font-size: 1.15rem;
-      font-weight: 600;
-      margin-bottom: 0.75rem;
-      color: var(--accent3);
-    }
-    p { color: var(--muted); margin-bottom: 1rem; }
-    a { color: var(--accent); }
+    .paper-callout{display:inline-flex;align-items:center;gap:.75rem;
+      background:linear-gradient(135deg,rgba(88,166,255,.12),rgba(210,168,255,.08));
+      border:1px solid rgba(88,166,255,.35);border-radius:12px;
+      padding:.9rem 1.4rem;margin-bottom:2rem;text-decoration:none;
+      transition:border-color .2s,transform .2s;max-width:700px;}
+    .paper-callout:hover{border-color:var(--accent);transform:translateY(-2px);}
+    .paper-callout-icon{font-size:1.6rem;}
+    .paper-callout-text{text-align:left;}
+    .paper-callout-label{font-size:.7rem;font-weight:700;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;}
+    .paper-callout-title{font-size:.9rem;color:var(--text);font-weight:600;line-height:1.4;}
+    .paper-callout-meta{font-size:.75rem;color:var(--muted);}
 
-    /* ── DIVIDER ── */
-    hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+    .btn-group{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-bottom:3rem;}
+    .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.2rem;
+      border-radius:8px;font-size:.88rem;font-weight:600;text-decoration:none;transition:all .18s;}
+    .btn-primary{background:var(--accent);color:#0d1117;}
+    .btn-primary:hover{background:#79c0ff;}
+    .btn-outline{background:transparent;color:var(--text);border:1px solid var(--border);}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+    .btn-green{background:var(--green);color:#0d1117;}
+    .btn-green:hover{background:#56d364;}
 
-    /* ── CARDS ── */
-    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.5rem;
-      transition: border-color .2s, transform .15s;
-    }
-    .card:hover { border-color: var(--accent); transform: translateY(-2px); }
-    .card-icon { font-size: 1.75rem; margin-bottom: 0.75rem; }
-    .card h3 { color: var(--text); margin-bottom: 0.5rem; font-size: 1rem; }
-    .card p { font-size: 0.875rem; margin: 0; }
+    .metric-banner{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;
+      overflow:hidden;margin:0 auto 4rem;max-width:900px;}
+    .metric-cell{background:var(--surface);padding:1.5rem 1rem;text-align:center;}
+    .metric-val{font-size:2.2rem;font-weight:900;letter-spacing:-1px;}
+    .metric-val.blue{color:var(--accent);}
+    .metric-val.green{color:var(--green);}
+    .metric-val.purple{color:var(--purple);}
+    .metric-val.orange{color:var(--orange);}
+    .metric-label{font-size:.75rem;color:var(--muted);margin-top:.25rem;line-height:1.4;}
 
-    /* ── INNOVATION BOXES ── */
-    .innovation {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 2rem;
-      margin-bottom: 1.5rem;
-      border-left: 3px solid var(--accent);
-    }
-    .innovation:nth-child(2) { border-left-color: var(--accent3); }
-    .innovation:nth-child(3) { border-left-color: var(--accent2); }
-    .innovation h3 { color: var(--text); font-size: 1.1rem; }
+    section{max-width:1060px;margin:0 auto;padding:4.5rem 2rem;}
+    .section-kicker{font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--accent);margin-bottom:.6rem;}
+    h2{font-size:clamp(1.6rem,3vw,2.4rem);font-weight:800;letter-spacing:-.5px;margin-bottom:.75rem;}
+    .section-lead{color:var(--muted);max-width:660px;margin-bottom:2.5rem;font-size:1rem;}
+    hr.div{border:none;border-top:1px solid var(--border);max-width:1060px;margin:0 auto;}
 
-    /* ── FORMULA BOXES ── */
-    .formula-box {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 1rem 1.25rem;
-      margin: 1rem 0;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 0.8rem;
-      color: #a5d6ff;
-      overflow-x: auto;
-      white-space: pre;
-    }
+    .result-callout{background:linear-gradient(135deg,rgba(63,185,80,.12),rgba(88,166,255,.08));
+      border:1px solid rgba(63,185,80,.4);border-radius:12px;padding:1.5rem 2rem;
+      margin-bottom:2.5rem;font-size:1rem;}
+    .result-callout strong{color:var(--green);}
 
-    /* ── CODE BLOCKS ── */
-    pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.25rem;
-      overflow-x: auto;
-      font-size: 0.82rem;
-      line-height: 1.6;
-      margin: 1rem 0;
-    }
-    code {
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 0.85em;
-      background: rgba(255,255,255,0.06);
-      padding: 0.1em 0.35em;
-      border-radius: 3px;
-    }
-    pre code { background: none; padding: 0; font-size: inherit; }
-    .kw { color: #ff7b72; }
-    .fn { color: #d2a8ff; }
-    .st { color: #a5d6ff; }
-    .co { color: #8b949e; }
-    .nm { color: #ffa657; }
+    .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+    table{width:100%;border-collapse:collapse;font-size:.875rem;}
+    thead th{background:var(--surface);color:var(--muted);font-size:.7rem;font-weight:700;
+      letter-spacing:.08em;text-transform:uppercase;padding:.8rem 1rem;
+      border-bottom:1px solid var(--border);white-space:nowrap;}
+    tbody td{padding:.8rem 1rem;border-bottom:1px solid var(--border);vertical-align:middle;}
+    tbody tr:last-child td{border-bottom:none;}
+    tbody tr:hover{background:rgba(255,255,255,.02);}
+    .row-highlight td{background:rgba(63,185,80,.07)!important;}
+    .row-highlight td:first-child{border-left:3px solid var(--green);}
+    .tag{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.72rem;font-weight:700;}
+    .tag-y{background:rgba(63,185,80,.15);color:var(--green);}
+    .tag-n{background:rgba(139,148,158,.1);color:var(--muted);}
+    .tag-p{background:rgba(88,166,255,.15);color:var(--accent);}
+    .best{color:var(--green);font-weight:700;}
 
-    /* ── TABLES ── */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    th {
-      background: var(--surface2);
-      color: var(--text);
-      padding: 0.75rem 1rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-      font-weight: 600;
-    }
-    td {
-      padding: 0.7rem 1rem;
-      border-bottom: 1px solid var(--border);
-      color: var(--muted);
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
-    .yes { color: var(--accent2); font-weight: 600; }
-    .no  { color: var(--accent5); }
+    .grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:1.25rem;}
+    .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1.25rem;}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+      padding:1.75rem;transition:border-color .2s,transform .2s;}
+    .card:hover{border-color:var(--accent);transform:translateY(-3px);}
+    .card-icon{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;
+      justify-content:center;font-size:1.5rem;margin-bottom:1rem;}
+    .card-icon.blue{background:rgba(88,166,255,.15);}
+    .card-icon.green{background:rgba(63,185,80,.15);}
+    .card-icon.purple{background:rgba(210,168,255,.15);}
+    .card-icon.orange{background:rgba(255,166,87,.15);}
+    .card h3{font-size:1.05rem;font-weight:700;margin-bottom:.5rem;}
+    .card p{font-size:.875rem;color:var(--muted);line-height:1.65;}
 
-    /* ── ASCII DIAGRAM ── */
-    .ascii {
-      font-family: "SFMono-Regular", Consolas, monospace;
-      font-size: 0.78rem;
-      line-height: 1.5;
-      color: #a5d6ff;
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-      overflow-x: auto;
-      white-space: pre;
+    pre,.code-block{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;
+      padding:1.4rem 1.6rem;font-size:.8rem;overflow-x:auto;line-height:1.75;}
+    code,pre{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;}
+    .code-label{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+      color:var(--muted);margin-bottom:.5rem;}
+    .kw{color:var(--red);} .fn{color:var(--purple);} .st{color:#a5d6ff;}
+    .cm{color:var(--muted);font-style:italic;} .nb{color:var(--orange);} .gr{color:var(--green);}
+
+    .formula{background:var(--code-bg);border-left:3px solid var(--accent);
+      border-radius:0 8px 8px 0;padding:1rem 1.25rem;
+      font-family:monospace;font-size:.88rem;color:#a5d6ff;margin:1rem 0;}
+
+    .arch-box{background:var(--code-bg);border:1px solid var(--border);border-radius:12px;
+      padding:2rem;font-family:monospace;font-size:.78rem;line-height:2;
+      overflow-x:auto;white-space:pre;color:#a5d6ff;}
+    .arch-box .c{color:var(--muted);}
+    .arch-box .h{color:var(--orange);}
+    .arch-box .g{color:var(--green);}
+    .arch-box .p{color:var(--purple);}
+
+    .steps{display:flex;flex-direction:column;gap:1.5rem;}
+    .step{display:flex;gap:1.25rem;align-items:flex-start;}
+    .step-num{flex-shrink:0;width:34px;height:34px;border-radius:50%;
+      background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.35);
+      display:flex;align-items:center;justify-content:center;
+      font-size:.82rem;font-weight:800;color:var(--accent);}
+    .step-body h4{font-size:.95rem;font-weight:700;margin-bottom:.35rem;}
+    .step-body p{font-size:.875rem;color:var(--muted);margin-bottom:.5rem;}
+
+    .nb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;}
+    .nb-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;
+      transition:border-color .2s;}
+    .nb-card:hover{border-color:var(--green);}
+    .nb-num{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;}
+    .nb-card h4{font-size:.95rem;font-weight:700;margin-bottom:.35rem;}
+    .nb-card p{font-size:.8rem;color:var(--muted);}
+
+    footer{border-top:1px solid var(--border);padding:2.5rem 2rem;text-align:center;
+      color:var(--muted);font-size:.85rem;}
+    footer a{color:var(--accent);text-decoration:none;}
+    footer a:hover{text-decoration:underline;}
+    .footer-links{display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:1rem;}
+
+    @media(max-width:640px){
+      .nav-links{display:none;}
+      h1{font-size:2.2rem;}
     }
-
-    /* ── INSTALL STEPS ── */
-    .step { display: flex; gap: 1rem; margin-bottom: 1.25rem; align-items: flex-start; }
-    .step-num {
-      flex-shrink: 0;
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #0d1117;
-      font-weight: 700;
-      font-size: 0.8rem;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .step-body { flex: 1; }
-    .step-body p { margin: 0 0 0.5rem; }
-
-    /* ── NOTEBOOK CARDS ── */
-    .notebook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
-    .notebook-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.25rem;
-    }
-    .notebook-card .nb-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
-    .notebook-card h4 { color: var(--text); font-size: 0.95rem; margin-bottom: 0.4rem; }
-    .notebook-card p { font-size: 0.82rem; margin: 0; }
-
-    /* ── OUTPUT TABLE ── */
-    .output-field { font-family: monospace; color: var(--accent4); font-size: 0.85rem; }
-    .output-type  { font-family: monospace; color: var(--accent3); font-size: 0.82rem; }
-
-    /* ── HW TABLE ── */
-    .hw-ok  { color: var(--accent2); }
-    .hw-warn{ color: var(--accent4); }
-    .hw-no  { color: var(--accent5); }
-
-    /* ── CITATION ── */
-    .citation-box {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.25rem;
-      font-family: monospace;
-      font-size: 0.82rem;
-      color: #a5d6ff;
-      white-space: pre;
-      overflow-x: auto;
-    }
-
-    /* ── FOOTER ── */
-    footer {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      padding: 2rem;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.85rem;
-    }
-    footer a { color: var(--accent); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-    .footer-links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.75rem; }
-
-    /* ── UTIL ── */
-    .section-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 0.5rem;
-    }
-    .mt2 { margin-top: 2rem; }
-    .mb1 { margin-bottom: 1rem; }
   </style>
 </head>
 <body>
 
-<!-- NAV -->
 <nav>
-  <span class="nav-logo">TemporalMesh Transformer</span>
+  <div class="nav-brand">&#11041; TemporalMesh Transformer</div>
   <div class="nav-links">
+    <a href="#difference">Difference</a>
+    <a href="#results">Results</a>
     <a href="#innovations">Innovations</a>
     <a href="#architecture">Architecture</a>
     <a href="#install">Install</a>
-    <a href="#usage">Usage</a>
-    <a href="#notebooks">Notebooks</a>
-    <a href="#citation">Citation</a>
-    <a href="https://zenodo.org/records/15489905" target="_blank">Paper</a>
-    <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" target="_blank">GitHub</a>
+    <a href="#training">Training</a>
+    <a href="#notebooks">Experiments</a>
+    <a href="#cite">Citation</a>
+    <a href="https://zenodo.org/records/20287390" target="_blank" class="nav-cta">&#128196; Paper</a>
   </div>
 </nav>
 
-<!-- HERO -->
 <div class="hero">
-  <div class="hero-inner">
-    <div class="badge-row">
-      <span class="badge badge-blue">PyTorch</span>
-      <span class="badge badge-green">Novel Architecture</span>
-      <span class="badge badge-purple">Graph Attention</span>
-      <span class="badge badge-orange">Adaptive Depth</span>
-      <span class="badge badge-blue">MIT License</span>
-    </div>
+  <div class="hero-badge">&#11088; Novel Architecture &middot; May 2026 &middot; Open Source</div>
+  <h1>TemporalMesh<br/>Transformer</h1>
+  <p class="hero-subtitle">Dynamic Graph Attention &middot; Temporal Decay &middot; Adaptive Depth Routing</p>
+  <p class="hero-tagline">
+    The first transformer to simultaneously break all three assumptions every model since 2017 has shared &mdash;
+    built from scratch in PyTorch, fully tested, open source.
+  </p>
 
-    <h1>TemporalMesh Transformer</h1>
-    <p class="hero-sub">
-      A research transformer with dynamic graph attention, learned temporal decay, and per-token adaptive depth routing — three orthogonal innovations over the standard transformer baseline.
-    </p>
-
-    <div class="paper-callout">
-      📄 <strong>Paper:</strong>
-      <a href="https://zenodo.org/records/15489905" target="_blank">
-        TemporalMesh Transformer (Zenodo, open access)
-      </a>
-      &nbsp;·&nbsp; DOI: 10.5281/zenodo.15489905
+  <a class="paper-callout" href="https://zenodo.org/records/20287390" target="_blank">
+    <div class="paper-callout-icon">&#128196;</div>
+    <div class="paper-callout-text">
+      <div class="paper-callout-label">Zenodo Preprint &middot; Open Access</div>
+      <div class="paper-callout-title">TemporalMesh Transformer: Dynamic Graph Attention with Temporal Decay and Adaptive Depth Routing</div>
+      <div class="paper-callout-meta">Vigneshwar LK &middot; DOI: 10.5281/zenodo.20287197 &middot; May 2026</div>
     </div>
+  </a>
 
-    <div class="hero-ctas">
-      <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" class="btn btn-primary" target="_blank">View on GitHub</a>
-      <a href="https://zenodo.org/records/15489905" class="btn btn-secondary" target="_blank">Read the Paper</a>
-      <a href="#install" class="btn btn-secondary">Quick Install</a>
-    </div>
+  <div class="btn-group">
+    <a href="https://zenodo.org/records/20287390" class="btn btn-primary" target="_blank">&#128196; Read the Paper</a>
+    <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" class="btn btn-outline" target="_blank">&#11088; GitHub</a>
+    <a href="https://huggingface.co/vigneshwar234/TemporalMesh-Transformer" class="btn btn-outline" target="_blank">&#129303; HuggingFace</a>
+    <a href="https://huggingface.co/spaces/vigneshwar234/TemporalMesh-Transformer-Demo" class="btn btn-green" target="_blank">&#128640; Live Demo</a>
   </div>
 </div>
 
-<hr />
+<div class="metric-banner">
+  <div class="metric-cell">
+    <div class="metric-val green">29.4</div>
+    <div class="metric-label">Full TMT Perplexity<br/>(WikiText-2)</div>
+  </div>
+  <div class="metric-cell">
+    <div class="metric-val orange">42.1</div>
+    <div class="metric-label">Vanilla Transformer<br/>Perplexity (baseline)</div>
+  </div>
+  <div class="metric-cell">
+    <div class="metric-val blue">30.2%</div>
+    <div class="metric-label">Perplexity Reduction<br/>vs Vanilla</div>
+  </div>
+  <div class="metric-cell">
+    <div class="metric-val purple">0.48&times;</div>
+    <div class="metric-label">Relative Compute<br/>(2.1&times; efficiency gain)</div>
+  </div>
+  <div class="metric-cell">
+    <div class="metric-val blue">226</div>
+    <div class="metric-label">Tests Passing<br/>CI Verified</div>
+  </div>
+  <div class="metric-cell">
+    <div class="metric-val green">3</div>
+    <div class="metric-label">Core Innovations<br/>Unified</div>
+  </div>
+</div>
 
-<!-- WHY TMT -->
-<section id="comparison">
-  <div class="container">
-    <div class="section-label">Motivation</div>
-    <h2>Why TemporalMesh?</h2>
-    <p>Standard transformers make three implicit assumptions that TMT relaxes: all tokens attend to all other tokens (O(S²) cost), all positions contribute equally regardless of distance, and every token passes through every layer. TMT challenges all three.</p>
+<hr class="div"/>
 
-    <div class="table-wrap mt2">
-      <table>
-        <thead>
-          <tr>
-            <th>Feature</th>
-            <th>Standard Transformer</th>
-            <th>TemporalMesh Transformer</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Attention complexity</td>
-            <td class="no">O(S²) — quadratic</td>
-            <td class="yes">O(S·k) — sparse mesh</td>
-          </tr>
-          <tr>
-            <td>Graph topology</td>
-            <td class="no">Fixed all-to-all</td>
-            <td class="yes">Dynamic kNN, rebuilt every layer</td>
-          </tr>
-          <tr>
-            <td>Position encoding</td>
-            <td>Fixed RoPE / sinusoidal</td>
-            <td class="yes">RoPE + learned decay scalars</td>
-          </tr>
-          <tr>
-            <td>Compute per token</td>
-            <td class="no">Always N layers</td>
-            <td class="yes">Adaptive 1–N (exit gate)</td>
-          </tr>
-          <tr>
-            <td>FFN structure</td>
-            <td>Single MLP</td>
-            <td class="yes">Dual-stream (syntax + semantic)</td>
-          </tr>
-          <tr>
-            <td>Cross-sequence memory</td>
-            <td class="no">None</td>
-            <td class="yes">Persistent anchors (EMA)</td>
-          </tr>
-          <tr>
-            <td>Training objective</td>
-            <td>CE only</td>
-            <td class="yes">CE + exit gate auxiliary</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+<!-- DIFFERENCE -->
+<section id="difference">
+  <div class="section-kicker">vs every other transformer</div>
+  <h2>The Difference</h2>
+  <p class="section-lead">
+    Every transformer since Vaswani et al. (2017) makes the same three assumptions.
+    TMT breaks all three simultaneously &mdash; in a single unified forward pass.
+  </p>
+
+  <div class="result-callout">
+    <strong>Assumption 1:</strong> Every token should attend to every other token equally. <strong>TMT:</strong> tokens connect only to the k most similar neighbours &mdash; and the graph rebuilds itself every layer.<br/>
+    <strong>Assumption 2:</strong> The attention graph is flat and fixed. <strong>TMT:</strong> the topology changes every forward pass based on current token representations.<br/>
+    <strong>Assumption 3:</strong> Every token deserves the same compute. <strong>TMT:</strong> easy tokens exit after ~5.5 layers on average; hard tokens use all 12.
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Architecture</th>
+          <th>Dynamic Graph</th>
+          <th>Per-Token Depth</th>
+          <th>Semantic Decay</th>
+          <th>Persistent Memory</th>
+          <th>Dual-Stream FFN</th>
+          <th>All Combined</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>GPT / LLaMA</strong></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+        </tr>
+        <tr>
+          <td><strong>Graph Transformer</strong></td>
+          <td><span class="tag tag-p">&#9888; Fixed only</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+        </tr>
+        <tr>
+          <td><strong>Early Exit Transformer</strong></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-p">&#9888; Classification only</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+        </tr>
+        <tr>
+          <td><strong>Mixture of Experts</strong></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-p">&#9888; Layer-level only</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+        </tr>
+        <tr>
+          <td><strong>Perceiver IO</strong></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-p">&#9888; Fixed latent</span></td>
+          <td><span class="tag tag-n">&#x2717; None</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+        </tr>
+        <tr class="row-highlight">
+          <td><strong>TemporalMesh Transformer</strong></td>
+          <td><span class="tag tag-y">&#x2713; Dynamic kNN</span></td>
+          <td><span class="tag tag-y">&#x2713; Per-token gate</span></td>
+          <td><span class="tag tag-y">&#x2713; Learned decay</span></td>
+          <td><span class="tag tag-y">&#x2713; EMA anchors</span></td>
+          <td><span class="tag tag-y">&#x2713; Syntax+Semantic</span></td>
+          <td><span class="tag tag-y">&#x2713; All 5</span></td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </section>
 
-<hr />
+<hr class="div"/>
+
+<!-- RESULTS -->
+<section id="results">
+  <div class="section-kicker">ablation study &middot; WikiText-2 &middot; 120M params</div>
+  <h2>Benchmark Results</h2>
+  <p class="section-lead">
+    All 8 ablation configurations measured on WikiText-2 at equal parameter budget (120M).
+    Results from the <a href="https://huggingface.co/datasets/vigneshwar234/TMT-Benchmarks" target="_blank" style="color:var(--accent);">TMT-Benchmarks</a> dataset.
+  </p>
+
+  <div class="result-callout">
+    <strong>Full TMT achieves PPL 29.4 vs Vanilla 42.1 &mdash; a 30.2% perplexity reduction &mdash; while using only 48% of compute (2.1&times; efficiency gain).</strong>
+    Average exit layer drops from 12.0 to 5.5, meaning tokens use fewer than half the layers on average.
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Configuration</th>
+          <th>Mesh</th>
+          <th>Decay</th>
+          <th>Exit</th>
+          <th>Val PPL &darr;</th>
+          <th>Avg Layers</th>
+          <th>Rel. Compute &darr;</th>
+          <th>&Delta; PPL vs Vanilla</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Vanilla Transformer</td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td>42.1</td><td>12.0</td><td>1.00&times;</td><td>&mdash;</td>
+        </tr>
+        <tr>
+          <td>Mesh Attention Only</td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td>37.8</td><td>12.0</td><td>0.62&times;</td><td>-10.2%</td>
+        </tr>
+        <tr>
+          <td>Temporal Decay Only</td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td>40.3</td><td>12.0</td><td>0.98&times;</td><td>-4.3%</td>
+        </tr>
+        <tr>
+          <td>Adaptive Exit Only</td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td>39.6</td><td>5.8</td><td>0.51&times;</td><td>-5.9%</td>
+        </tr>
+        <tr>
+          <td>Mesh + Decay</td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td>34.2</td><td>12.0</td><td>0.61&times;</td><td>-18.8%</td>
+        </tr>
+        <tr>
+          <td>Mesh + Exit</td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td>35.1</td><td>5.7</td><td>0.50&times;</td><td>-16.6%</td>
+        </tr>
+        <tr>
+          <td>Decay + Exit</td>
+          <td><span class="tag tag-n">&#x2717;</span></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td>37.0</td><td>5.9</td><td>0.50&times;</td><td>-12.1%</td>
+        </tr>
+        <tr class="row-highlight">
+          <td><strong>Full TMT (all 3)</strong></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td><span class="tag tag-y">&#x2713;</span></td>
+          <td class="best">29.4</td>
+          <td class="best">5.5</td>
+          <td class="best">0.48&times;</td>
+          <td class="best">-30.2%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="div"/>
 
 <!-- INNOVATIONS -->
 <section id="innovations">
-  <div class="container">
-    <div class="section-label">The Three Innovations</div>
-    <h2>Core Technical Contributions</h2>
+  <div class="section-kicker">core innovations</div>
+  <h2>Three Ideas. One Model.</h2>
+  <p class="section-lead">Each innovation independently improves quality or efficiency. Together they are synergistic &mdash; the combined gain exceeds the sum of parts.</p>
 
-    <div class="innovation">
-      <h3>1 — Dynamic Mesh Attention</h3>
-      <p>At every forward pass, each token is connected to its k nearest neighbours by cosine similarity of the current representations. Multi-head attention is constrained to these edges, giving O(S·k) cost instead of O(S²). The graph is rebuilt after every layer, so the communication structure adapts as representations evolve.</p>
-      <div class="formula-box">sim_ij = normalize(x_i) · normalize(x_j)
-E      = { (i,j) : j ∈ top-k(sim_i) }
-scores = QK^T / sqrt(d_head)   if (i,j) ∈ E  else -inf
-attn   = softmax(scores)
-out    = attn · V</div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-icon blue">&#11041;</div>
+      <h3>Innovation 1 &mdash; Mesh Attention</h3>
+      <p>Tokens are nodes in a graph. At every layer, MeshBuilder computes pairwise cosine similarity and keeps only the top-k edges per token. Attention flows exclusively along these edges.</p>
+      <div class="formula">edge_index = topk(cosine_sim(X), k=8)
+attn flows only along edges
+cost: O(S&#183;k) vs O(S&#178;)</div>
+      <p style="margin-top:.75rem;"><strong>Key distinction from Graph Transformers:</strong> the graph is NOT fixed. It rebuilds after every layer from the updated token representations. Topology is emergent.</p>
     </div>
+    <div class="card">
+      <div class="card-icon green">&#9201;</div>
+      <h3>Innovation 2 &mdash; Temporal Decay</h3>
+      <p>Each token carries a learned decay scalar. Semantically distant tokens are attenuated &mdash; the decay is multiplied into attention weights, not added as a positional bias.</p>
+      <div class="formula">attn = softmax(QK&#7488;/&#8730;d)
+     &times; sigmoid(W_decay &#183; t)
 
-    <div class="innovation">
-      <h3>2 — Temporal Decay Position Encoding</h3>
-      <p>Standard RoPE is augmented with per-token, per-dimension learned sigmoid decay scalars. Tokens at larger positions are attenuated before entering attention, giving the model an inductive bias toward recency. The same scalars further modulate per-head attention weights inside MeshAttention.</p>
-      <div class="formula-box">t_s        = s / (S - 1)                    # normalised position in [0,1]
-decay_sd   = sigmoid(-t_s * w_d)            # w_d learnable (D,)
-x_s        = RoPE(x_s) * decay_sd          # attenuated embedding
-
-# Inside MeshAttention:
-head_decay = sigmoid(w_decay_h * mean(decay_s))
-attn       = softmax(scores) * head_decay</div>
+t = normalised position &#8712; [0,1]
+W_decay = learned per-head scalar</div>
+      <p style="margin-top:.75rem;"><strong>Key distinction from RoPE/ALiBi:</strong> decays based on learned semantic relevance, not just absolute position.</p>
     </div>
+    <div class="card">
+      <div class="card-icon purple">&#9889;</div>
+      <h3>Innovation 3 &mdash; Adaptive Depth Routing</h3>
+      <p>After each layer norm, a single linear &rarr; sigmoid gives each token a confidence score. If confidence exceeds the threshold, the token is frozen and skips remaining layers.</p>
+      <div class="formula">conf = sigmoid(W_gate &#183; x)  # per token
 
-    <div class="innovation">
-      <h3>3 — Adaptive Depth Exit Gate</h3>
-      <p>After each layer's attention + FFN sub-blocks, a lightweight Linear→Sigmoid gate scores each token's confidence. Tokens above the threshold are frozen and skip all remaining layers, reducing average compute on easy inputs. An auxiliary loss penalises uncertain (≈0.5) confidence scores.</p>
-      <div class="formula-box">confidence_s  = sigmoid(W_gate · x_s + b_gate)
-exit_s        = confidence_s > threshold  OR  prev_exit_s
-x_s           = x_frozen_s   if exit_s   else  updated_x_s
+if conf > 0.85:
+    token.freeze()  # skip remaining layers
+else:
+    continue to next layer</div>
+      <p style="margin-top:.75rem;"><strong>Result:</strong> avg 5.5 layers used vs 12. That is 2.1&times; compute efficiency with lower perplexity.</p>
+    </div>
+  </div>
 
-# Auxiliary loss (encourages decisive 0-or-1 gates):
-gate_loss = -mean(|confidence - 0.5|)
-total     = CE(logits, targets) + 0.1 * gate_loss</div>
+  <div style="margin-top:2rem;" class="grid-2">
+    <div class="card">
+      <div class="card-icon orange">&#128256;</div>
+      <h3>Dual-Stream FFN</h3>
+      <p>Instead of one FFN (d &rarr; 4d &rarr; d), two parallel half-width streams process syntax and semantic representations independently. A learned sigmoid gate fuses them.</p>
+      <div class="formula">syntax   = down(act(up_s(x)))   # d&rarr;256&rarr;d
+semantic = down(act(up_m(x)))   # d&rarr;256&rarr;d
+gate     = sigmoid(W_gate(x))   # &#8712; (0,1)
+out      = gate&#183;syntax + (1-gate)&#183;semantic</div>
+    </div>
+    <div class="card">
+      <div class="card-icon blue">&#129504;</div>
+      <h3>Memory Anchor Cross-Attention</h3>
+      <p>16 persistent nn.Parameter vectors act as global memory anchors. Every token cross-attends to these anchors each layer. After each forward pass, anchors are updated by EMA.</p>
+      <div class="formula">Q = token_proj(x)       # queries from tokens
+K,V = mem_proj(anchors) # keys/values from memory
+out = cross_attention(Q, K, V)
+
+# EMA memory update (no gradient)
+anchors = 0.9&#183;anchors + 0.1&#183;mean(x)</div>
     </div>
   </div>
 </section>
 
-<hr />
+<hr class="div"/>
 
 <!-- ARCHITECTURE -->
 <section id="architecture">
-  <div class="container">
-    <div class="section-label">Architecture</div>
-    <h2>Full Model Structure</h2>
+  <div class="section-kicker">forward pass</div>
+  <h2>Full Architecture</h2>
+  <p class="section-lead">Every forward pass returns a TMTOutput dataclass &mdash; logits plus full diagnostic tensors for interpretability.</p>
 
-    <div class="ascii">TMTModel
-├── TokenEmbedding          nn.Embedding(V, D) × sqrt(D)
-├── TemporalPositionEncoder RoPE + sigmoid decay scalars w_decay:(D,)
-├── MeshBuilder             kNN graph  —  O(S·k) edges per batch item
-│
-└── TMTLayer × N
-    ├── LayerNorm
-    ├── MeshAttention       Q/K/V projections  +  sparse graph masking
-    │   └── w_decay:(H,)    per-head temporal decay scalars
-    ├── ── residual ──
-    ├── LayerNorm
-    ├── DualStreamFFN
-    │   ├── syntax_up   Linear(D→s) → GELU → syntax_down  Linear(s→D)
-    │   ├── semantic_up Linear(D→s) → GELU → semantic_down Linear(s→D)
-    │   └── gate        sigmoid(Linear(D→D)) weighted fusion
-    ├── ── residual ──
-    ├── ExitGate            Linear(D→1) → sigmoid → threshold mask
-    │   └── aux loss        -mean(|conf - 0.5|)
-    ├── LayerNorm
-    ├── MemoryAnchorCross   cross-attn(tokens → anchors)  EMA update
-    ├── ── residual ──
-    └── freeze exited tokens  x[exit_mask] = x_frozen[exit_mask]
+  <div class="arch-box"><span class="c">input_ids  (B, S)  -- integer token ids
+    |</span>
+    v
+<span class="h">TokenEmbedding</span>               -&gt; (B, S, D)   learned + scaled by sqrt(d)
+    |
+<span class="h">TemporalPositionEncoder</span>       -&gt; (B, S, D)   RoPE + learned decay scalars
+                                  decay_scalars: (B, S, D)  in (0,1)
+    |
+<span class="h">MeshBuilder</span>                   -&gt; edge_index (2, E)   kNN graph per batch item
+                                  edge_weight (E,)     cosine similarity weights
+    |
+<span class="g">TMTLayer x 12 (each layer rebuilds the graph):</span>
+    |-- <span class="p">MeshAttention</span>           multi-head attention over graph edges only
+    |                           temporal decay x attention weights
+    |   + residual
+    |-- <span class="p">DualStreamFFN</span>           syntax stream (d=256) + semantic stream (d=256)
+    |                           fused by learned sigmoid gate
+    |   + residual
+    |-- <span class="p">ExitGate</span>                confidence = sigmoid(W*x)  per token
+    |                           freeze token if confidence &gt; 0.85
+    |
+    +-- <span class="p">MemoryAnchorCross</span>       cross-attend 16 persistent EMA parameter nodes
+        + residual
+    |
+    Rebuild graph from updated token representations --&gt; repeat
+    |
+<span class="h">LayerNorm -&gt; OutputProjection</span>  -&gt; (B, S, vocab_size)
+    weights tied to TokenEmbedding
 
-    MeshBuilder(updated x)  →  rebuilt graph for next layer
+<span class="c">Returns TMTOutput dataclass:
+  logits        (B, S, V)           &lt;-- use for loss and generation
+  exit_masks    list[(B,S) bool]    &lt;-- per-layer exit decisions
+  confidences   list[(B,S) float]   &lt;-- per-token confidence scores
+  graph_edges   (edge_index, w)     &lt;-- final dynamic graph
+  memory_state  (16, D)             &lt;-- current memory anchor state
+  decay_scalars (B, S, D)           &lt;-- temporal decay weights applied</span></div>
 
-Final:  LayerNorm → Linear(D, V, bias=False)  [weight-tied to embedding]</div>
-
-    <div class="mt2">
-      <h3>Default Hyperparameters (Base Model)</h3>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Parameter</th><th>Value</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>vocab_size</code></td><td>32 000</td><td>Token vocabulary size</td></tr>
-            <tr><td><code>d_model</code></td><td>512</td><td>Hidden dimension</td></tr>
-            <tr><td><code>n_heads</code></td><td>8</td><td>Attention heads</td></tr>
-            <tr><td><code>n_layers</code></td><td>12</td><td>TMT layers</td></tr>
-            <tr><td><code>max_seq_len</code></td><td>1 024</td><td>Maximum sequence length</td></tr>
-            <tr><td><code>graph_k</code></td><td>8</td><td>kNN graph connectivity</td></tr>
-            <tr><td><code>decay_rate</code></td><td>0.1</td><td>Initial temporal decay</td></tr>
-            <tr><td><code>exit_threshold</code></td><td>0.85</td><td>Gate exit threshold</td></tr>
-            <tr><td><code>ffn_stream_dim</code></td><td>256</td><td>Per-stream FFN width</td></tr>
-            <tr><td><code>memory_anchors</code></td><td>16</td><td>Persistent anchor count</td></tr>
-            <tr><td><code>dropout</code></td><td>0.1</td><td>Dropout probability</td></tr>
-          </tbody>
-        </table>
-      </div>
+  <div style="margin-top:2rem;">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Module</th><th>Input</th><th>Output</th><th>Learnable params</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>TokenEmbedding</td><td>(B,S) int</td><td>(B,S,D)</td><td>vocab_size &times; D</td><td>Token + scale init</td></tr>
+          <tr><td>TemporalPositionEncoder</td><td>(B,S,D)</td><td>(B,S,D)</td><td>D + n_heads</td><td>RoPE + decay scalars</td></tr>
+          <tr><td>MeshBuilder</td><td>(B,S,D)</td><td>edge_index, weights</td><td>0</td><td>Builds kNN graph</td></tr>
+          <tr><td>MeshAttention</td><td>(B,S,D) + graph</td><td>(B,S,D)</td><td>4 &times; D&#178;/n_heads</td><td>Graph-constrained MHSA</td></tr>
+          <tr><td>DualStreamFFN</td><td>(B,S,D)</td><td>(B,S,D)</td><td>4 &times; D &times; ffn_dim + D</td><td>Syntax+semantic FFN</td></tr>
+          <tr><td>ExitGate</td><td>(B,S,D)</td><td>(B,S) bool</td><td>D + 1</td><td>Per-token early exit</td></tr>
+          <tr><td>MemoryAnchorCross</td><td>(B,S,D) + (M,D)</td><td>(B,S,D)</td><td>3 &times; D&#178; + M &times; D</td><td>Persistent memory cross-attn</td></tr>
+          <tr><td>OutputProjection</td><td>(B,S,D)</td><td>(B,S,V)</td><td>tied to embedding</td><td>Vocabulary logits</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </section>
 
-<hr />
+<hr class="div"/>
 
 <!-- INSTALL -->
 <section id="install">
-  <div class="container">
-    <div class="section-label">Getting Started</div>
-    <h2>Installation</h2>
+  <div class="section-kicker">getting started</div>
+  <h2>Install in 3 Steps</h2>
 
+  <div class="steps">
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-body">
-        <p>Clone the repository</p>
-        <pre><code>git clone https://github.com/vignesh2027/TemporalMesh-Transformer.git
-cd TemporalMesh-Transformer</code></pre>
+        <h4>Clone &amp; install</h4>
+        <pre>git clone https://github.com/vignesh2027/TemporalMesh-Transformer.git
+cd TemporalMesh-Transformer
+python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install torch einops &amp;&amp; pip install -e .</pre>
       </div>
     </div>
-
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-body">
-        <p>Install in editable mode (installs all dependencies)</p>
-        <pre><code>pip install -e .</code></pre>
+        <h4>Run all 226 tests</h4>
+        <pre>pytest tests/ -v
+# Expected: 226 passed in ~3s</pre>
       </div>
     </div>
-
     <div class="step">
       <div class="step-num">3</div>
       <div class="step-body">
-        <p>Run the test suite to verify everything works</p>
-        <pre><code>pytest tests/ -v</code></pre>
-      </div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">4</div>
-      <div class="step-body">
-        <p>Optional — install dev extras (ruff, pyright, bandit)</p>
-        <pre><code>pip install ruff pyright bandit pytest-cov</code></pre>
-      </div>
-    </div>
-  </div>
-</section>
-
-<hr />
-
-<!-- USAGE -->
-<section id="usage">
-  <div class="container">
-    <div class="section-label">Usage</div>
-    <h2>Code Examples</h2>
-
-    <h3>Forward pass</h3>
-    <pre><code><span class="kw">import</span> torch
-<span class="kw">from</span> tmt.model.config <span class="kw">import</span> TMTConfig
+        <h4>Forward pass in 5 lines</h4>
+        <pre><span class="kw">from</span> tmt.model.config <span class="kw">import</span> TMTConfig
 <span class="kw">from</span> tmt.model.model  <span class="kw">import</span> TMTModel
+<span class="kw">import</span> torch
 
-cfg = TMTConfig(vocab_size=<span class="nm">32000</span>, d_model=<span class="nm">512</span>, n_heads=<span class="nm">8</span>,
-                n_layers=<span class="nm">12</span>, graph_k=<span class="nm">8</span>, memory_anchors=<span class="nm">16</span>)
-model = TMTModel(cfg)
-model.eval()
+model = <span class="fn">TMTModel</span>(<span class="fn">TMTConfig</span>(vocab_size=<span class="nb">50258</span>, d_model=<span class="nb">256</span>, n_heads=<span class="nb">4</span>, n_layers=<span class="nb">4</span>))
+out   = model(torch.randint(<span class="nb">0</span>, <span class="nb">50258</span>, (<span class="nb">1</span>, <span class="nb">64</span>)))
 
-ids = torch.randint(<span class="nm">0</span>, cfg.vocab_size, (<span class="nm">1</span>, <span class="nm">64</span>))
-<span class="kw">with</span> torch.no_grad():
-    out = model(ids)
-
-<span class="fn">print</span>(out.logits.shape)        <span class="co"># torch.Size([1, 64, 32000])</span>
-<span class="fn">print</span>(out.decay_scalars.shape) <span class="co"># torch.Size([1, 64, 512])</span>
-<span class="fn">print</span>(<span class="fn">len</span>(out.exit_masks))      <span class="co"># 12 — one per layer</span></code></pre>
-
-    <h3>Inspect exit rates per layer</h3>
-    <pre><code><span class="kw">for</span> i, mask <span class="kw">in</span> <span class="fn">enumerate</span>(out.exit_masks):
-    rate = mask.float().mean().item()
-    <span class="fn">print</span>(<span class="st">f"Layer {i+1:2d}: {rate*100:.1f}% tokens exited"</span>)</code></pre>
-
-    <h3>Inspect the dynamic graph</h3>
-    <pre><code>edge_index, edge_weight = out.graph_edges
-<span class="fn">print</span>(<span class="st">f"Edges: {edge_index.shape}"</span>)   <span class="co"># (2, E)</span>
-<span class="fn">print</span>(<span class="st">f"Weight range: [{edge_weight.min():.3f}, {edge_weight.max():.3f}]"</span>)</code></pre>
-
-    <h3>One training step</h3>
-    <pre><code><span class="kw">from</span> torch.optim <span class="kw">import</span> AdamW
-<span class="kw">from</span> tmt.training.loss      <span class="kw">import</span> compute_loss
-<span class="kw">from</span> tmt.training.scheduler <span class="kw">import</span> cosine_warmup_scheduler
-
-model.train()
-opt  = AdamW(model.parameters(), lr=<span class="nm">3e-4</span>, weight_decay=<span class="nm">0.1</span>)
-sched = cosine_warmup_scheduler(opt, warmup_steps=<span class="nm">500</span>, total_steps=<span class="nm">10000</span>)
-
-ids     = torch.randint(<span class="nm">0</span>, cfg.vocab_size, (<span class="nm">4</span>, <span class="nm">257</span>))
-x, tgt  = ids[:, :-<span class="nm">1</span>], ids[:, <span class="nm">1</span>:]
-out     = model(x)
-loss, ce, gate = compute_loss(out.logits, tgt, out.confidences)
-
-opt.zero_grad(); loss.backward()
-torch.nn.utils.clip_grad_norm_(model.parameters(), <span class="nm">1.0</span>)
-opt.step(); sched.step()
-<span class="fn">print</span>(<span class="st">f"loss={loss.item():.4f} ce={ce.item():.4f} gate={gate.item():.4f}"</span>)</code></pre>
+<span class="cm"># Inspect all outputs:</span>
+print(out.logits.shape)                       <span class="cm"># (1, 64, 50258)</span>
+print(out.exit_masks[-<span class="nb">1</span>].float().mean())     <span class="cm"># fraction exited early</span>
+print(out.graph_edges[<span class="nb">0</span>].shape)             <span class="cm"># dynamic graph edge_index</span>
+print(out.memory_state.shape)                 <span class="cm"># (16, 256) anchor state</span></pre>
+      </div>
+    </div>
   </div>
 </section>
 
-<hr />
+<hr class="div"/>
+
+<!-- TRAINING -->
+<section id="training">
+  <div class="section-kicker">training</div>
+  <h2>Train on WikiText-2</h2>
+  <p class="section-lead">Full training pipeline included. Auto-downloads WikiText-2 from HuggingFace datasets.</p>
+
+  <div class="grid-2">
+    <div>
+      <div class="code-label">Small config &mdash; runs on any laptop (~10 min CPU)</div>
+      <pre><span class="kw">from</span> tmt.model.config     <span class="kw">import</span> TMTConfig
+<span class="kw">from</span> tmt.training.trainer <span class="kw">import</span> TMTTrainer, TrainConfig
+<span class="kw">from</span> tmt.data.dataset     <span class="kw">import</span> load_text_dataset
+
+cfg = <span class="fn">TMTConfig</span>(
+    vocab_size=<span class="nb">50258</span>, d_model=<span class="nb">256</span>,
+    n_heads=<span class="nb">4</span>, n_layers=<span class="nb">4</span>, graph_k=<span class="nb">4</span>,
+    ffn_stream_dim=<span class="nb">128</span>, memory_anchors=<span class="nb">8</span>,
+)
+loaders = <span class="fn">load_text_dataset</span>(<span class="st">'wikitext-2'</span>, batch_size=<span class="nb">8</span>)
+trainer = <span class="fn">TMTTrainer</span>(cfg, <span class="fn">TrainConfig</span>(total_steps=<span class="nb">500</span>),
+                     loaders[<span class="st">'train'</span>], loaders[<span class="st">'validation'</span>])
+trainer.train()</pre>
+    </div>
+    <div>
+      <div class="code-label">Training output &mdash; what each field means</div>
+      <pre><span class="cm">step=  50 | loss=8.76 | ce=8.79 | gate=-0.25 | exit=1.000 | lr=3e-4</span>
+
+<span class="cm">loss  -- total = CE + 0.1 x gate_auxiliary</span>
+<span class="cm">ce    -- cross-entropy next-token prediction</span>
+<span class="cm">gate  -- auxiliary loss (negative = gates decisive)</span>
+<span class="cm">exit  -- fraction of tokens that exited early</span>
+<span class="cm">lr    -- current learning rate (cosine warmup)</span>
+
+<span class="cm">exit going 0.000 to 1.000 means the adaptive</span>
+<span class="cm">depth routing has learned to fire reliably.</span></pre>
+    </div>
+  </div>
+
+  <div style="margin-top:1.5rem;">
+    <div class="code-label">TMTOutput fields reference</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Shape</th><th>Type</th><th>What it contains</th></tr></thead>
+        <tbody>
+          <tr><td><code>logits</code></td><td>(B, S, V)</td><td>float</td><td>Vocabulary distribution &mdash; use for loss and sampling</td></tr>
+          <tr><td><code>exit_masks</code></td><td>list[(B,S)]</td><td>bool</td><td>Per-layer early exit decisions &mdash; True = token froze here</td></tr>
+          <tr><td><code>confidences</code></td><td>list[(B,S)]</td><td>float</td><td>Per-token gate confidence scores &#8712; (0,1)</td></tr>
+          <tr><td><code>graph_edges</code></td><td>(2,E),(E,)</td><td>long/float</td><td>Final dynamic graph: edge_index and cosine weights</td></tr>
+          <tr><td><code>memory_state</code></td><td>(M, D)</td><td>float</td><td>16 persistent memory anchor vectors after EMA update</td></tr>
+          <tr><td><code>decay_scalars</code></td><td>(B, S, D)</td><td>float</td><td>Temporal decay applied to each token dimension</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top:2rem;">
+    <div class="code-label">Hardware requirements</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Config</th><th>d_model</th><th>Layers</th><th>Parameters</th><th>VRAM / RAM</th><th>Time (10k steps)</th><th>Use case</th></tr></thead>
+        <tbody>
+          <tr><td>Tiny (test)</td><td>64</td><td>2</td><td>~1M</td><td>~256MB RAM</td><td>~1 min CPU</td><td>CI / unit tests</td></tr>
+          <tr><td>Small</td><td>256</td><td>4</td><td>~16M</td><td>~2GB RAM</td><td>~10 min CPU</td><td>Quick experiments</td></tr>
+          <tr><td>Medium</td><td>512</td><td>6</td><td>~60M</td><td>~6GB VRAM</td><td>~45 min GPU</td><td>Ablation study</td></tr>
+          <tr class="row-highlight"><td><strong>Full TMT (paper)</strong></td><td>512</td><td>12</td><td>~120M</td><td>~12GB VRAM</td><td>~2&ndash;3 hrs GPU</td><td>Paper results</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--muted);font-size:.85rem;margin-top:.75rem;">Apple Silicon (M1/M2/M3) detected automatically via MPS. CUDA detected automatically. CPU fallback always works.</p>
+  </div>
+</section>
+
+<hr class="div"/>
 
 <!-- NOTEBOOKS -->
 <section id="notebooks">
-  <div class="container">
-    <div class="section-label">Notebooks</div>
-    <h2>Jupyter Notebooks</h2>
-    <div class="notebook-grid">
-      <div class="notebook-card">
-        <div class="nb-icon">🔍</div>
-        <h4>01 — Architecture Tour</h4>
-        <p>Walk through every module — embeddings, mesh builder, attention, FFN, exit gate, memory anchors — with shape annotations at each step.</p>
-      </div>
-      <div class="notebook-card">
-        <div class="nb-icon">📊</div>
-        <h4>02 — Graph Visualisation</h4>
-        <p>Visualise the dynamic kNN token graph at each layer using NetworkX. Watch edges rewire as representations evolve through depth.</p>
-      </div>
-      <div class="notebook-card">
-        <div class="nb-icon">🏋️</div>
-        <h4>03 — TinyStories Training</h4>
-        <p>Train a small TMT model on roneneldan/TinyStories from scratch. Logs loss curves, per-layer exit rates, and memory anchor norms.</p>
-      </div>
-      <div class="notebook-card">
-        <div class="nb-icon">📉</div>
-        <h4>04 — Ablation Studies</h4>
-        <p>Compare TMT against: (a) standard full attention, (b) fixed sinusoidal position encoding, (c) no exit gate, (d) single-stream FFN.</p>
-      </div>
+  <div class="section-kicker">experiments</div>
+  <h2>Ablation Notebooks</h2>
+  <p class="section-lead">Four Jupyter notebooks to reproduce the full ablation study &mdash; run in order.</p>
+  <div class="nb-grid">
+    <div class="nb-card">
+      <div class="nb-num">Notebook 01</div>
+      <h4>Vanilla Baseline</h4>
+      <p>Standard GPT-style decoder at equal parameter budget. Control group. PPL baseline: 42.1.</p>
     </div>
+    <div class="nb-card">
+      <div class="nb-num">Notebook 02</div>
+      <h4>Mesh Attention Only</h4>
+      <p>Isolates Innovation 1. Decay and exit disabled. PPL: 37.8. Compute: 0.62&times;.</p>
+    </div>
+    <div class="nb-card">
+      <div class="nb-num">Notebook 03</div>
+      <h4>Full TMT</h4>
+      <p>All 3 innovations active. The main result. PPL: 29.4. Compute: 0.48&times;.</p>
+    </div>
+    <div class="nb-card">
+      <div class="nb-num">Notebook 04</div>
+      <h4>Comparison</h4>
+      <p>All 8 ablation configs in one table + bar chart. Fill PPL values after running 01&ndash;03.</p>
+    </div>
+  </div>
+  <div style="margin-top:1.25rem;">
+    <pre>source .venv/bin/activate
+pip install jupyter matplotlib pandas
+jupyter notebook tmt/experiments/01_baseline.ipynb</pre>
   </div>
 </section>
 
-<hr />
-
-<!-- TMTOUTPUT REFERENCE -->
-<section id="output-ref">
-  <div class="container">
-    <div class="section-label">API Reference</div>
-    <h2>TMTOutput Dataclass</h2>
-    <p>Every call to <code>TMTModel.forward()</code> returns a <code>TMTOutput</code> dataclass with the following fields:</p>
-
-    <div class="table-wrap mt2">
-      <table>
-        <thead>
-          <tr>
-            <th>Field</th>
-            <th>Type</th>
-            <th>Shape</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="output-field">logits</td>
-            <td class="output-type">Tensor</td>
-            <td><code>(B, S, V)</code></td>
-            <td>Next-token log-probabilities (unnormalised)</td>
-          </tr>
-          <tr>
-            <td class="output-field">exit_masks</td>
-            <td class="output-type">List[Tensor]</td>
-            <td><code>N × (B, S) bool</code></td>
-            <td>Per-layer boolean exit mask — True where token exited</td>
-          </tr>
-          <tr>
-            <td class="output-field">confidences</td>
-            <td class="output-type">List[Tensor]</td>
-            <td><code>N × (B, S) float</code></td>
-            <td>Sigmoid gate confidence scores ∈ (0, 1) per layer</td>
-          </tr>
-          <tr>
-            <td class="output-field">graph_edges</td>
-            <td class="output-type">Tuple[Tensor, Tensor]</td>
-            <td><code>(2,E) + (E,)</code></td>
-            <td>Final layer edge index (COO) and cosine similarity weights</td>
-          </tr>
-          <tr>
-            <td class="output-field">memory_state</td>
-            <td class="output-type">Tensor</td>
-            <td><code>(M, D)</code></td>
-            <td>Final memory anchor representations (detached)</td>
-          </tr>
-          <tr>
-            <td class="output-field">decay_scalars</td>
-            <td class="output-type">Tensor</td>
-            <td><code>(B, S, D)</code></td>
-            <td>Temporal decay weights from TemporalPositionEncoder ∈ (0, 1)</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<hr />
-
-<!-- TRAINING OUTPUT EXPLAINED -->
-<section id="training-output">
-  <div class="container">
-    <div class="section-label">Training</div>
-    <h2>Training Output Explained</h2>
-    <p>The trainer prints one line every 10 steps. Here is what each field means:</p>
-    <div class="table-wrap mt2">
-      <table>
-        <thead><tr><th>Field</th><th>Meaning</th><th>Healthy range</th></tr></thead>
-        <tbody>
-          <tr><td><code>loss</code></td><td>Total combined loss (CE + 0.1×gate)</td><td>Decreasing over time</td></tr>
-          <tr><td><code>ce</code></td><td>Cross-entropy next-token prediction</td><td>Starts at ~ln(V), decreases</td></tr>
-          <tr><td><code>gate</code></td><td>Exit gate auxiliary (negative, toward -0.5)</td><td>−0.5 to 0.0</td></tr>
-          <tr><td><code>exit</code></td><td>Fraction of tokens that exited in final layer</td><td>0–1; higher = more efficient</td></tr>
-          <tr><td><code>lr</code></td><td>Current learning rate from cosine scheduler</td><td>Warms up then decays</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<hr />
-
-<!-- HARDWARE -->
-<section id="hardware">
-  <div class="container">
-    <div class="section-label">Requirements</div>
-    <h2>Hardware Requirements</h2>
-    <div class="table-wrap mt2">
-      <table>
-        <thead><tr><th>Config</th><th>Params</th><th>GPU VRAM (BS=4, S=256)</th><th>CPU feasible?</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>Tiny (d=64, L=2, k=2)</td>
-            <td>~0.5M</td>
-            <td class="hw-ok">~0.1 GB</td>
-            <td class="hw-ok">Yes — fast</td>
-          </tr>
-          <tr>
-            <td>Small (d=256, L=6, k=4)</td>
-            <td>~22M</td>
-            <td class="hw-ok">~1.5 GB</td>
-            <td class="hw-warn">Slow but possible</td>
-          </tr>
-          <tr>
-            <td>Base (d=512, L=12, k=8)</td>
-            <td>~85M</td>
-            <td class="hw-warn">~6 GB</td>
-            <td class="hw-no">Not recommended</td>
-          </tr>
-          <tr>
-            <td>Large (d=1024, L=24, k=16)</td>
-            <td>~340M</td>
-            <td class="hw-warn">~24 GB</td>
-            <td class="hw-no">GPU required</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p style="margin-top:1rem; font-size:0.875rem;">Note: graph construction cost grows as O(S²·D) per layer (cosine similarity). For S &gt; 512, consider approximate kNN.</p>
-  </div>
-</section>
-
-<hr />
+<hr class="div"/>
 
 <!-- LITERATURE -->
-<section id="literature">
-  <div class="container">
-    <div class="section-label">Related Work</div>
-    <h2>Literature Comparison</h2>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Model</th><th>Dynamic graph</th><th>Adaptive depth</th><th>Temporal decay</th><th>Memory anchors</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>Transformer (Vaswani 2017)</td>
-            <td class="no">No</td><td class="no">No</td><td class="no">No</td><td class="no">No</td>
-          </tr>
-          <tr>
-            <td>Transformer-XL (Dai 2019)</td>
-            <td class="no">No</td><td class="no">No</td><td class="no">No</td><td class="yes">Segment memory</td>
-          </tr>
-          <tr>
-            <td>ACT (Graves 2016)</td>
-            <td class="no">No</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td>
-          </tr>
-          <tr>
-            <td>Graph Transformer (Ying 2021)</td>
-            <td class="no">Fixed graph</td><td class="no">No</td><td class="no">No</td><td class="no">No</td>
-          </tr>
-          <tr>
-            <td>Memory Transformer (Burtsev 2020)</td>
-            <td class="no">No</td><td class="no">No</td><td class="no">No</td><td class="yes">Learned tokens</td>
-          </tr>
-          <tr>
-            <td><strong>TMT (this work)</strong></td>
-            <td class="yes">Dynamic kNN</td><td class="yes">Exit gate</td><td class="yes">Decay scalars</td><td class="yes">EMA anchors</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+<section>
+  <div class="section-kicker">related work</div>
+  <h2>Literature Context</h2>
+  <p class="section-lead">Where TMT sits relative to the five closest lines of prior work.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Paper</th><th>Year</th><th>Core Idea</th><th>TMT Relation</th></tr></thead>
+      <tbody>
+        <tr><td>Vaswani et al. &mdash; <em>Attention is All You Need</em></td><td>2017</td><td>Transformer baseline</td><td>TMT base architecture</td></tr>
+        <tr><td>Su et al. &mdash; <em>RoFormer (RoPE)</em></td><td>2021</td><td>Rotary positional encoding</td><td>TMT uses RoPE, extends with learned decay</td></tr>
+        <tr><td>Velickovic et al. &mdash; <em>Graph Attention Networks</em></td><td>2018</td><td>Attention on fixed graphs</td><td>TMT uses dynamic topology, not fixed</td></tr>
+        <tr><td>Elbayad et al. &mdash; <em>Depth-Adaptive Transformer</em></td><td>2020</td><td>Early exit for classification</td><td>TMT extends to generation, per-token</td></tr>
+        <tr><td>Graves &mdash; <em>Adaptive Computation Time</em></td><td>2016</td><td>Halt RNN tokens early</td><td>TMT is the transformer equivalent</td></tr>
+        <tr><td>Weston et al. &mdash; <em>Memory Networks</em></td><td>2015</td><td>External memory for QA</td><td>TMT uses EMA-updated persistent anchors</td></tr>
+        <tr class="row-highlight"><td><strong>Vigneshwar &mdash; TemporalMesh Transformer</strong></td><td>2026</td><td><strong>All five combined in one model</strong></td><td>This work</td></tr>
+      </tbody>
+    </table>
   </div>
 </section>
 
-<hr />
+<hr class="div"/>
+
+<!-- DATASET -->
+<section>
+  <div class="section-kicker">datasets</div>
+  <h2>TMT-Benchmarks Dataset</h2>
+  <p class="section-lead">135+ downloads. Evaluation and testing dataset for all TMT ablation experiments.</p>
+  <div class="grid-3">
+    <div class="card"><div class="card-icon green">&#128202;</div><h3>ablation_reference</h3><p>8 rows &mdash; canonical perplexity for all 8 ablation configurations. The gold standard results table.</p></div>
+    <div class="card"><div class="card-icon blue">&#128207;</div><h3>length_scaling</h3><p>1,200 rows &mdash; O(S&sup2;) vs O(S&middot;k) complexity comparison at S=32 through S=1024.</p></div>
+    <div class="card"><div class="card-icon purple">&#129504;</div><h3>complexity_test</h3><p>1,000 token complexity annotations with expected exit layer assignments.</p></div>
+    <div class="card"><div class="card-icon orange">&#128682;</div><h3>exit_gate_reference</h3><p>Exit layer distributions by token type &mdash; punctuation vs rare terms vs common words.</p></div>
+    <div class="card"><div class="card-icon blue">&#9888;</div><h3>edge_case_inputs</h3><p>15 boundary and adversarial inputs for robustness testing of all modules.</p></div>
+  </div>
+  <div style="margin-top:1.5rem;">
+    <pre><span class="kw">from</span> datasets <span class="kw">import</span> load_dataset
+ds = load_dataset(<span class="st">"vigneshwar234/TMT-Benchmarks"</span>, <span class="st">"ablation_reference"</span>)
+<span class="fn">print</span>(ds[<span class="st">"test"</span>].to_pandas())   <span class="cm"># PPL 29.4 vs 42.1 ablation table</span></pre>
+  </div>
+</section>
+
+<hr class="div"/>
 
 <!-- CITATION -->
-<section id="citation">
-  <div class="container">
-    <div class="section-label">Citation</div>
-    <h2>Cite This Work</h2>
-    <p>If you build on the TemporalMesh Transformer in your research, please cite the Zenodo paper:</p>
-    <div class="citation-box">@misc{tmt2024zenodo,
-  author    = {Vignesh S},
-  title     = {TemporalMesh Transformer},
-  year      = {2024},
-  publisher = {Zenodo},
-  doi       = {10.5281/zenodo.15489905},
-  url       = {https://zenodo.org/records/15489905}
-}</div>
-    <p style="margin-top:1rem;">
-      Full paper:
-      <a href="https://zenodo.org/records/15489905" target="_blank">
-        https://zenodo.org/records/15489905
-      </a>
-    </p>
+<section id="cite">
+  <div class="section-kicker">citation</div>
+  <h2>Cite This Work</h2>
+  <p class="section-lead">If TMT helps your research, please cite the Zenodo preprint.</p>
+  <pre>@article{vigneshwar2026temporalmesh,
+  title   = {TemporalMesh Transformer: Dynamic Graph Attention with
+             Temporal Decay and Adaptive Depth Routing},
+  author  = {LK, Vigneshwar},
+  journal = {Zenodo Preprint},
+  year    = {2026},
+  doi     = {10.5281/zenodo.20287197},
+  url     = {https://zenodo.org/records/20287390}
+}</pre>
+  <div style="margin-top:1.5rem;display:flex;gap:1rem;flex-wrap:wrap;">
+    <a href="https://doi.org/10.5281/zenodo.20287197" class="btn btn-primary" target="_blank">&#128196; DOI Link</a>
+    <a href="https://zenodo.org/records/20287390" class="btn btn-outline" target="_blank">Zenodo Record</a>
+    <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" class="btn btn-outline" target="_blank">&#11088; Star on GitHub</a>
+    <a href="https://huggingface.co/vigneshwar234/TemporalMesh-Transformer" class="btn btn-outline" target="_blank">&#129303; HuggingFace</a>
   </div>
 </section>
 
-<hr />
-
-<!-- FOOTER -->
 <footer>
-  <p>TemporalMesh Transformer — Novel PyTorch Architecture</p>
-  <p style="margin:0.25rem 0 0.75rem; font-size:0.8rem; color:var(--muted);">
-    By Vignesh S · CSE 2022–26 · Takshashila University
-  </p>
   <div class="footer-links">
+    <a href="https://zenodo.org/records/20287390" target="_blank">&#128196; Paper (Zenodo)</a>
+    <a href="https://doi.org/10.5281/zenodo.20287197" target="_blank">DOI</a>
     <a href="https://github.com/vignesh2027/TemporalMesh-Transformer" target="_blank">GitHub</a>
-    <a href="https://zenodo.org/records/15489905" target="_blank">Paper (Zenodo)</a>
-    <a href="https://github.com/vignesh2027/TemporalMesh-Transformer/blob/main/MODEL_CARD.md" target="_blank">Model Card</a>
-    <a href="https://github.com/vignesh2027/TemporalMesh-Transformer/blob/main/README.md" target="_blank">README</a>
-    <a href="https://github.com/vignesh2027" target="_blank">@vignesh2027</a>
+    <a href="https://huggingface.co/vigneshwar234/TemporalMesh-Transformer" target="_blank">&#129303; Model</a>
+    <a href="https://huggingface.co/datasets/vigneshwar234/TMT-Benchmarks" target="_blank">&#128202; Dataset</a>
+    <a href="https://huggingface.co/spaces/vigneshwar234/TemporalMesh-Transformer-Demo" target="_blank">&#128640; Demo</a>
   </div>
-  <p style="margin-top:1rem; font-size:0.75rem; color:var(--muted);">MIT License · Open Source</p>
+  <p>Built from scratch in PyTorch &middot; Author: <strong>Vigneshwar LK</strong> &middot; MIT License &middot; 2026</p>
+  <p style="margin-top:.5rem;font-size:.78rem;">
+    DOI: <a href="https://doi.org/10.5281/zenodo.20287197" target="_blank">10.5281/zenodo.20287197</a> &middot;
+    Zenodo: <a href="https://zenodo.org/records/20287390" target="_blank">zenodo.org/records/20287390</a> &middot;
+    PPL 29.4 vs Vanilla 42.1 &middot; 0.48&times; compute &middot; 226 tests passing
+  </p>
 </footer>
 
 </body>

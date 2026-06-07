@@ -22,14 +22,31 @@ from tmt.training.loss import compute_loss
 # (ablation_reference split — no network required, hardcoded for CI stability)
 # ---------------------------------------------------------------------------
 ABLATION = [
-    {"name": "Vanilla",    "mesh": False, "decay": False, "exit": False, "val_ppl": 42.1, "avg_layers": 12.0, "rel_compute": 1.00},
-    {"name": "Mesh Only",  "mesh": True,  "decay": False, "exit": False, "val_ppl": 37.8, "avg_layers": 12.0, "rel_compute": 0.62},
-    {"name": "Decay Only", "mesh": False, "decay": True,  "exit": False, "val_ppl": 40.3, "avg_layers": 12.0, "rel_compute": 0.98},
-    {"name": "Exit Only",  "mesh": False, "decay": False, "exit": True,  "val_ppl": 39.6, "avg_layers":  5.8, "rel_compute": 0.51},
-    {"name": "Mesh+Decay", "mesh": True,  "decay": True,  "exit": False, "val_ppl": 34.2, "avg_layers": 12.0, "rel_compute": 0.61},
-    {"name": "Mesh+Exit",  "mesh": True,  "decay": False, "exit": True,  "val_ppl": 35.1, "avg_layers":  5.7, "rel_compute": 0.50},
-    {"name": "Decay+Exit", "mesh": False, "decay": True,  "exit": True,  "val_ppl": 37.0, "avg_layers":  5.9, "rel_compute": 0.50},
-    {"name": "Full TMT",   "mesh": True,  "decay": True,  "exit": True,  "val_ppl": 29.4, "avg_layers":  5.5, "rel_compute": 0.48},
+    # name         mesh   decay  exit   val_ppl  avg_layers  rel_compute
+    {"name": "Vanilla",
+     "mesh": False, "decay": False, "exit": False,
+     "val_ppl": 42.1, "avg_layers": 12.0, "rel_compute": 1.00},
+    {"name": "Mesh Only",
+     "mesh": True, "decay": False, "exit": False,
+     "val_ppl": 37.8, "avg_layers": 12.0, "rel_compute": 0.62},
+    {"name": "Decay Only",
+     "mesh": False, "decay": True, "exit": False,
+     "val_ppl": 40.3, "avg_layers": 12.0, "rel_compute": 0.98},
+    {"name": "Exit Only",
+     "mesh": False, "decay": False, "exit": True,
+     "val_ppl": 39.6, "avg_layers": 5.8, "rel_compute": 0.51},
+    {"name": "Mesh+Decay",
+     "mesh": True, "decay": True, "exit": False,
+     "val_ppl": 34.2, "avg_layers": 12.0, "rel_compute": 0.61},
+    {"name": "Mesh+Exit",
+     "mesh": True, "decay": False, "exit": True,
+     "val_ppl": 35.1, "avg_layers": 5.7, "rel_compute": 0.50},
+    {"name": "Decay+Exit",
+     "mesh": False, "decay": True, "exit": True,
+     "val_ppl": 37.0, "avg_layers": 5.9, "rel_compute": 0.50},
+    {"name": "Full TMT",
+     "mesh": True, "decay": True, "exit": True,
+     "val_ppl": 29.4, "avg_layers": 5.5, "rel_compute": 0.48},
 ]
 VANILLA  = ABLATION[0]
 FULL_TMT = ABLATION[-1]

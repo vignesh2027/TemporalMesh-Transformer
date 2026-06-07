@@ -7,7 +7,6 @@ import os
 import math
 import tempfile
 
-import pytest
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
@@ -67,7 +66,7 @@ def test_train_one_step_no_crash():
 def test_train_one_step_loss_is_scalar():
     model = TMTModel(ICFG)
     model.train()
-    opt = AdamW(model.parameters(), lr=1e-3)
+    AdamW(model.parameters(), lr=1e-3)
     ids = _make_batch()
     x, targets = ids[:, :-1], ids[:, 1:]
     out = model(x)
@@ -249,4 +248,4 @@ def test_scheduler_with_model_training():
         sched.step()
         losses.append(total.item())
 
-    assert all(math.isfinite(l) for l in losses), "Non-finite loss during training"
+    assert all(math.isfinite(v) for v in losses), "Non-finite loss during training"

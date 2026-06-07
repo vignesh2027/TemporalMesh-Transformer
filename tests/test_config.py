@@ -3,7 +3,6 @@ test_config.py — tests for TMTConfig defaults, repr, validation, and serialisa
 
 Run: pytest tests/test_config.py -v
 """
-import pytest
 from dataclasses import asdict
 
 from tmt.model.config import TMTConfig
