@@ -18,15 +18,13 @@ jobs:
           python-version: "3.11"
 
       - name: Install build tools
-        run: pip install build
+        run: pip install build twine
 
       - name: Build wheel and sdist
         run: python -m build
 
-      - name: Check dist contents
-        run: |
-          pip install twine
-          twine check dist/*
+      - name: Verify package
+        run: twine check dist/*
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4
@@ -38,29 +36,11 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
+    # Only run if the pypi environment secret PYPI_TOKEN is available
+    if: github.event_name == 'release' && vars.PYPI_READY == 'true'
     environment:
       name: pypi
       url: https://pypi.org/p/temporal-mesh-transformer
-    permissions:
-      id-token: write   # OIDC trusted publishing — no API token needed
-
-    steps:
-      - name: Download distribution artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: python-package-distributions
-          path: dist/
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-
-  publish-testpypi:
-    name: Publish to TestPyPI (smoke check)
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/temporal-mesh-transformer
     permissions:
       id-token: write
 
@@ -71,8 +51,5 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-      - name: Publish to TestPyPI
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://upload.pypi.org/legacy/
-          skip-existing: true
