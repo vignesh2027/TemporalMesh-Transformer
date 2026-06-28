@@ -1,6 +1,6 @@
 <div align="center">
 
-# TemporalMesh Transformer (TMT)
+# TemporalMesh Transformer(TMT)
 ### Dynamic Graph Attention · Temporal Decay · Adaptive Depth Routing
 
 [![Paper](https://img.shields.io/badge/📄_Paper-Zenodo_Preprint-blue?style=for-the-badge)](https://zenodo.org/records/20287390)
